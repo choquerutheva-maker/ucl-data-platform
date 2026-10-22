@@ -1,0 +1,27 @@
+# Recalcula gold.f_tabla_posiciones (manual; la temporada actual se recalcula
+# todos los días dentro de carga-espn-resultados). Idempotente.
+name: calcula-tabla-posiciones
+
+on:
+  workflow_dispatch:
+    inputs:
+      temporadas:
+        description: "Años de inicio separados por coma, o 'todas' (vacío = todas)"
+        required: false
+
+jobs:
+  calcular:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Calcular tabla de posiciones
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          python src/transformacion/tabla_posiciones.py --temporadas "${{ inputs.temporadas || 'todas' }}"

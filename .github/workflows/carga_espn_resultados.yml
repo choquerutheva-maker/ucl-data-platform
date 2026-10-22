@@ -29,3 +29,10 @@ jobs:
           ARGS=""
           if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
           python src/ingesta/espn_resultados.py $ARGS
+      - name: Recalcular tabla de posiciones
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
+          python src/transformacion/tabla_posiciones.py $ARGS
