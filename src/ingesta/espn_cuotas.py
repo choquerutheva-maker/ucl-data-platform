@@ -7,6 +7,8 @@ línea (silver):
     ACTUAL    -> cuota vigente al momento de la captura (partido por jugarse)
     APERTURA  -> primera línea publicada (bloque moneyline.open)
     CIERRE    -> última línea antes del inicio (partido ya iniciado/jugado)
+Los bloques que solo traen winPercentage (p. ej. 'bloomberg' en 2016-17) van
+aparte a silver.espn_prob_externa: son probabilidades de un modelo, no cuotas.
 
 Uso:
     py src/ingesta/espn_cuotas.py                                   # ayer .. +14 días
@@ -46,6 +48,12 @@ COLUMNAS = [
     "estadio", "ciudad", "casa_id", "casa_apuestas", "tipo_linea",
     "cuota_local", "cuota_empate", "cuota_visita",
     "linea_ou", "cuota_over", "cuota_under", "formato_origen", "capturado_en",
+]
+
+# Probabilidades de modelos externos (p. ej. 'bloomberg'): no son cuotas
+COLUMNAS_PROB = [
+    "espn_event_id", "liga", "inicio_utc", "local_espn_id", "visita_espn_id",
+    "proveedor_id", "proveedor", "prob_local", "prob_visita", "prob_empate", "capturado_en",
 ]
 
 
@@ -241,6 +249,41 @@ def filas_cuotas(evento, summary, liga, capturado_en):
     return filas
 
 
+def filas_prob_externa(evento, summary, liga, capturado_en):
+    """Bloques sin moneyLine que solo traen winPercentage (p. ej. 'bloomberg' 2016-17)."""
+    if summary is None:
+        return []
+    comp = evento["competitions"][0]
+    equipos = {c["homeAway"]: c["team"] for c in comp["competitors"]}
+    filas, vistos = [], set()
+    for b in (summary.get("pickcenter") or []) + (summary.get("odds") or []):
+        if not b:
+            continue
+        casa = b.get("provider") or {}
+        h = b.get("homeTeamOdds") or {}
+        a = b.get("awayTeamOdds") or {}
+        if "moneyLine" in h or "moneyline" in b or casa.get("id") in vistos:
+            continue
+        pl, pv = h.get("winPercentage"), a.get("winPercentage")
+        if pl is None or pv is None:
+            continue
+        vistos.add(casa.get("id"))
+        filas.append({
+            "espn_event_id": evento["id"],
+            "liga": liga,
+            "inicio_utc": evento["date"],
+            "local_espn_id": equipos["home"]["id"],
+            "visita_espn_id": equipos["away"]["id"],
+            "proveedor_id": casa.get("id"),
+            "proveedor": casa.get("name"),
+            "prob_local": pl,
+            "prob_visita": pv,
+            "prob_empate": (b.get("drawOdds") or {}).get("winPercentage"),
+            "capturado_en": capturado_en,
+        })
+    return filas
+
+
 # -----------------------------------------------------------------------------
 # Destinos
 # -----------------------------------------------------------------------------
@@ -263,6 +306,16 @@ class DestinoLocal:
         nuevo = not self.csv.exists()
         with self.csv.open("a", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=COLUMNAS, extrasaction="ignore")
+            if nuevo:
+                w.writeheader()
+            w.writerows(filas)
+        return len(filas)
+
+    def guardar_prob_externa(self, filas, id_ingesta):
+        ruta = self.csv.with_name("espn_prob_externa.csv")
+        nuevo = not ruta.exists()
+        with ruta.open("a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=COLUMNAS_PROB, extrasaction="ignore")
             if nuevo:
                 w.writeheader()
             w.writerows(filas)
@@ -302,6 +355,18 @@ class DestinoPostgres:
             n += cur.rowcount
         return n
 
+    def guardar_prob_externa(self, filas, id_ingesta):
+        n = 0
+        for f in filas:
+            cur = self.cx.execute(
+                f"""INSERT INTO silver.espn_prob_externa (id_ingesta, {", ".join(COLUMNAS_PROB)})
+                    VALUES (%s, {", ".join(["%s"] * len(COLUMNAS_PROB))})
+                    ON CONFLICT DO NOTHING""",
+                (id_ingesta, *[f[c] for c in COLUMNAS_PROB]),
+            )
+            n += cur.rowcount
+        return n
+
     def cerrar(self):
         self.cx.commit()
         self.cx.close()
@@ -311,7 +376,7 @@ class DestinoPostgres:
 # Proceso principal
 # -----------------------------------------------------------------------------
 def capturar(desde, hasta, liga, destino, capturado_en):
-    dias = partidos = cuotas = 0
+    dias = partidos = cuotas = probs = 0
     dia = desde
     while dia <= hasta:
         clave_dia = dia.strftime("%Y%m%d")
@@ -331,10 +396,11 @@ def capturar(desde, hasta, liga, destino, capturado_en):
                 summary, id_ing = None, None
             filas = filas_cuotas(ev, summary, liga, capturado_en)
             cuotas += destino.guardar_cuotas(filas, id_ing)
+            probs += destino.guardar_prob_externa(filas_prob_externa(ev, summary, liga, capturado_en), id_ing)
             partidos += 1
         dia += timedelta(days=1)
         time.sleep(PAUSA_S)
-    return dias, partidos, cuotas
+    return dias, partidos, cuotas, probs
 
 
 def main():
@@ -352,7 +418,7 @@ def main():
     capturado_en = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     destino = DestinoPostgres(url_bd) if url_bd else DestinoLocal(capturado_en)
     try:
-        dias, partidos, cuotas = capturar(args.desde, args.hasta, args.liga, destino, capturado_en)
+        dias, partidos, cuotas, probs = capturar(args.desde, args.hasta, args.liga, destino, capturado_en)
     except Exception:
         if isinstance(destino, DestinoPostgres):
             destino.cx.rollback()
@@ -361,7 +427,7 @@ def main():
 
     modo = "PostgreSQL" if url_bd else f"local ({RAIZ / 'data'})"
     print(f"[{capturado_en}] {args.liga} {args.desde}..{args.hasta} · días {dias} · "
-          f"partidos {partidos} · filas de cuotas {cuotas} · destino {modo}")
+          f"partidos {partidos} · filas de cuotas {cuotas} · prob. externas {probs} · destino {modo}")
 
 
 if __name__ == "__main__":
