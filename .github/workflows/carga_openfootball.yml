@@ -1,0 +1,28 @@
+# Carga histórica de resultados desde openfootball (manual; es idempotente)
+name: carga-openfootball
+
+on:
+  workflow_dispatch:
+    inputs:
+      temporadas:
+        description: "Temporadas separadas por coma (vacío = 2015-16 .. 2025-26)"
+        required: false
+
+jobs:
+  cargar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Cargar resultados
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          ARGS=""
+          if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
+          python src/ingesta/openfootball_resultados.py $ARGS

@@ -1,0 +1,127 @@
+alias,pais_alias,nombre_canonico,pais
+FC Red Bull Salzburg,AUT,FC Red Bull Salzburg,AUT
+RB Salzburg,AUT,FC Red Bull Salzburg,AUT
+SK Sturm Graz,AUT,SK Sturm Graz,AUT
+Qarabağ Ağdam FK,AZE,Qarabağ Ağdam FK,AZE
+Qarabağ FK,AZE,Qarabağ Ağdam FK,AZE
+Club Brugge KV,BEL,Club Brugge KV,BEL
+KAA Gent,BEL,KAA Gent,BEL
+KRC Genk,BEL,KRC Genk,BEL
+RSC Anderlecht,BEL,RSC Anderlecht,BEL
+Royal Antwerp FC,BEL,Royal Antwerp FC,BEL
+Royale Union Saint-Gilloise,BEL,Royale Union Saint-Gilloise,BEL
+BATE Borisov,BLR,BATE Borisov,BLR
+PFC Ludogorets Razgrad,BUL,PFC Ludogorets Razgrad,BUL
+Dinamo Zagreb,CRO,GNK Dinamo Zagreb,CRO
+GNK Dinamo Zagreb,CRO,GNK Dinamo Zagreb,CRO
+APOEL Nikosia,CYP,APOEL Nikosia,CYP
+Paphos FC,CYP,Paphos FC,CYP
+AC Sparta Praha,CZE,AC Sparta Praha,CZE
+SK Slavia Praha,CZE,SK Slavia Praha,CZE
+Slavia Praha,CZE,SK Slavia Praha,CZE
+Viktoria Plzeň,CZE,Viktoria Plzeň,CZE
+FC København,DEN,FC København,DEN
+FC Midtjylland,DEN,FC Midtjylland,DEN
+Arsenal FC,ENG,Arsenal FC,ENG
+Aston Villa FC,ENG,Aston Villa FC,ENG
+Chelsea FC,ENG,Chelsea FC,ENG
+Leicester City,ENG,Leicester City,ENG
+Liverpool FC,ENG,Liverpool FC,ENG
+Manchester City,ENG,Manchester City FC,ENG
+Manchester City FC,ENG,Manchester City FC,ENG
+Manchester United,ENG,Manchester United FC,ENG
+Manchester United FC,ENG,Manchester United FC,ENG
+Newcastle United FC,ENG,Newcastle United FC,ENG
+Tottenham Hotspur,ENG,Tottenham Hotspur FC,ENG
+Tottenham Hotspur FC,ENG,Tottenham Hotspur FC,ENG
+Athletic Club,ESP,Athletic Club,ESP
+Atlético Madrid,ESP,Club Atlético de Madrid,ESP
+Club Atlético de Madrid,ESP,Club Atlético de Madrid,ESP
+FC Barcelona,ESP,FC Barcelona,ESP
+Girona FC,ESP,Girona FC,ESP
+Real Madrid,ESP,Real Madrid CF,ESP
+Real Madrid CF,ESP,Real Madrid CF,ESP
+Real Sociedad de Fútbol,ESP,Real Sociedad de Fútbol,ESP
+Sevilla FC,ESP,Sevilla FC,ESP
+Valencia CF,ESP,Valencia CF,ESP
+Villarreal CF,ESP,Villarreal CF,ESP
+AS Monaco,FRA,AS Monaco FC,FRA
+AS Monaco FC,MCO,AS Monaco FC,FRA
+Lille OSC,FRA,Lille OSC,FRA
+Olympique Lyonnais,FRA,Olympique Lyonnais,FRA
+Olympique Marseille,FRA,Olympique de Marseille,FRA
+Olympique de Marseille,FRA,Olympique de Marseille,FRA
+Paris Saint-Germain,FRA,Paris Saint-Germain FC,FRA
+Paris Saint-Germain FC,FRA,Paris Saint-Germain FC,FRA
+Racing Club de Lens,FRA,Racing Club de Lens,FRA
+Stade Brestois 29,FRA,Stade Brestois 29,FRA
+Stade Rennais,FRA,Stade Rennais,FRA
+1. FC Union Berlin,GER,1. FC Union Berlin,GER
+1899 Hoffenheim,GER,1899 Hoffenheim,GER
+Bayer 04 Leverkusen,GER,Bayer 04 Leverkusen,GER
+Bayer Leverkusen,GER,Bayer 04 Leverkusen,GER
+Bor. Mönchengladbach,GER,Bor. Mönchengladbach,GER
+Borussia Dortmund,GER,Borussia Dortmund,GER
+Eintracht Frankfurt,GER,Eintracht Frankfurt,GER
+Bayern München,GER,FC Bayern München,GER
+FC Bayern München,GER,FC Bayern München,GER
+FC Schalke 04,GER,FC Schalke 04,GER
+RB Leipzig,GER,RB Leipzig,GER
+VfB Stuttgart,GER,VfB Stuttgart,GER
+VfL Wolfsburg,GER,VfL Wolfsburg,GER
+AEK Athen,GRE,AEK Athen,GRE
+Olympiakos Piraeus,GRE,PAE Olympiakos SFP,GRE
+PAE Olympiakos SFP,GRE,PAE Olympiakos SFP,GRE
+Ferencvárosi TC,HUN,Ferencvárosi TC,HUN
+Maccabi Haifa,ISR,Maccabi Haifa,ISR
+Maccabi Tel Aviv,ISR,Maccabi Tel Aviv,ISR
+AC Milan,ITA,AC Milan,ITA
+AS Roma,ITA,AS Roma,ITA
+Atalanta,ITA,Atalanta BC,ITA
+Atalanta BC,ITA,Atalanta BC,ITA
+Bologna FC 1909,ITA,Bologna FC 1909,ITA
+FC Internazionale Milano,ITA,FC Internazionale Milano,ITA
+Inter,ITA,FC Internazionale Milano,ITA
+Juventus,ITA,Juventus FC,ITA
+Juventus FC,ITA,Juventus FC,ITA
+Lazio Roma,ITA,SS Lazio,ITA
+SS Lazio,ITA,SS Lazio,ITA
+SSC Napoli,ITA,SSC Napoli,ITA
+FK Astana,KAZ,FK Astana,KAZ
+FK Kairat,KAZ,FK Kairat,KAZ
+FC Sheriff,MDA,FC Sheriff,MDA
+AFC Ajax,NED,AFC Ajax,NED
+Feyenoord,NED,Feyenoord Rotterdam,NED
+Feyenoord Rotterdam,NED,Feyenoord Rotterdam,NED
+PSV,NED,PSV,NED
+PSV Eindhoven,NED,PSV,NED
+FK Bodø/Glimt,NOR,FK Bodø/Glimt,NOR
+Legia Warszawa,POL,Legia Warszawa,POL
+FC Porto,POR,FC Porto,POR
+SL Benfica,POR,Sport Lisboa e Benfica,POR
+Sport Lisboa e Benfica,POR,Sport Lisboa e Benfica,POR
+Sporting Clube de Braga,POR,Sporting Clube de Braga,POR
+Sporting CP,POR,Sporting Clube de Portugal,POR
+Sporting Clube de Portugal,POR,Sporting Clube de Portugal,POR
+CSKA Moskva,RUS,CSKA Moskva,RUS
+FK Krasnodar,RUS,FK Krasnodar,RUS
+FK Rostov,RUS,FK Rostov,RUS
+Lokomotiv Moskva,RUS,Lokomotiv Moskva,RUS
+Spartak Moskva,RUS,Spartak Moskva,RUS
+Zenit St. Petersburg,RUS,Zenit St. Petersburg,RUS
+Celtic FC,SCO,Celtic FC,SCO
+Rangers FC,SCO,Rangers FC,SCO
+Crvena Zvezda,SRB,FK Crvena Zvezda,SRB
+FK Crvena Zvezda,SRB,FK Crvena Zvezda,SRB
+BSC Young Boys,SUI,BSC Young Boys,SUI
+FC Basel 1893,SUI,FC Basel 1893,SUI
+ŠK Slovan Bratislava,SVK,ŠK Slovan Bratislava,SVK
+NK Maribor,SVN,NK Maribor,SVN
+Malmö FF,SWE,Malmö FF,SWE
+Beşiktaş,TUR,Beşiktaş,TUR
+Galatasaray,TUR,Galatasaray SK,TUR
+Galatasaray SK,TUR,Galatasaray SK,TUR
+İstanbul Başakşehir,TUR,İstanbul Başakşehir,TUR
+Dinamo Kiev,UKR,Dinamo Kiev,UKR
+FK Shakhtar Donetsk,UKR,FK Shakhtar Donetsk,UKR
+Shakhtar Donetsk,UKR,FK Shakhtar Donetsk,UKR
