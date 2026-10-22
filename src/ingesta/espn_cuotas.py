@@ -36,6 +36,10 @@ URL_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/{liga}/{recurso
 PAUSA_S = 0.4
 RAIZ = Path(__file__).resolve().parents[2]
 
+# Del summary (~280 KB) solo se guarda en bronze lo que sirve para cuotas (~10 KB)
+CLAVES_SUMMARY = ("header", "gameInfo", "pickcenter", "odds")
+CLAVES_RUIDO = {"links", "link", "logos", "logo", "playerOdds", "betSlipUrl", "footer", "uid", "$ref"}
+
 COLUMNAS = [
     "espn_event_id", "liga", "inicio_utc", "estado_partido",
     "local_espn_id", "local_nombre", "visita_espn_id", "visita_nombre",
@@ -106,6 +110,18 @@ def a_linea(v):
         return float(str(v).lstrip("ouOU+"))
     except ValueError:
         return None
+
+
+def _sin_ruido(nodo):
+    if isinstance(nodo, dict):
+        return {k: _sin_ruido(v) for k, v in nodo.items() if k not in CLAVES_RUIDO}
+    if isinstance(nodo, list):
+        return [_sin_ruido(x) for x in nodo]
+    return nodo
+
+
+def recortar_summary(summary):
+    return _sin_ruido({k: summary[k] for k in CLAVES_SUMMARY if k in summary})
 
 
 def cuotas_validas(fila):
@@ -303,11 +319,12 @@ def capturar(desde, hasta, liga, destino, capturado_en):
         dias += 1
         eventos = sb.get("events") or []
         if eventos:
-            destino.guardar_crudo("scoreboard", {"liga": liga, "dates": clave_dia}, status, sb)
+            destino.guardar_crudo("scoreboard", {"liga": liga, "dates": clave_dia}, status, _sin_ruido(sb))
         for ev in eventos:
             time.sleep(PAUSA_S)
             try:
                 st, summary = http_json(URL_BASE.format(liga=liga, recurso="summary") + f"?event={ev['id']}")
+                summary = recortar_summary(summary)
                 id_ing = destino.guardar_crudo("summary", {"liga": liga, "event": ev["id"]}, st, summary)
             except (HTTPError, URLError) as e:
                 print(f"  ! summary {ev['id']} falló ({e}); uso cuotas del scoreboard", file=sys.stderr)
