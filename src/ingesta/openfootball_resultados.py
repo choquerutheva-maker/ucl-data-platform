@@ -52,6 +52,12 @@ RE_PARTIDO = re.compile(
     r"(?P<gl>\d+)-(?P<gv>\d+)(?P<aet> a\.e\.t\.)?"
     r"(?:\s*\((?P<p1l>\d+)-(?P<p1v>\d+)(?:,\s*(?P<p2l>\d+)-(?P<p2v>\d+))?\))?\s*$"
 )
+# Prórrogas que el cl.txt publica sin 'a.e.t.' ni marcador al 90' (detectadas
+# al validar contra ESPN): (fecha, alias local) -> goles al 90' (local, visita)
+CORRECCIONES_PRORROGA = {
+    ("2025-02-19", "PSV (NED)"): (2, 1),                        # PSV 3-1 Juventus (Flamingo 98')
+    ("2025-05-06", "FC Internazionale Milano (ITA)"): (3, 3),   # Inter 4-3 Barcelona (Frattesi 99')
+}
 MESES = {m: i for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
 
@@ -113,7 +119,12 @@ def parsear(temporada, texto, equipos):
                 desconocidos.add(m.group(lado))
 
         gl, gv = int(m["gl"]), int(m["gv"])
-        if m["aet"]:
+        correccion = CORRECCIONES_PRORROGA.get((fecha.isoformat(), m["local"]))
+        aet = bool(m["aet"]) or correccion is not None
+        if correccion:
+            l90, v90 = correccion
+            lpro, vpro = gl, gv
+        elif m["aet"]:
             l90, v90 = (int(m["p1l"]), int(m["p1v"])) if m["p1l"] else (gl, gv)
             lpro, vpro = gl, gv
         else:
@@ -134,7 +145,7 @@ def parsear(temporada, texto, equipos):
             "goles_local_prorroga": lpro, "goles_visita_prorroga": vpro,
             "penales_local": int(m["pl"]) if m["pl"] else None,
             "penales_visita": int(m["pv"]) if m["pv"] else None,
-            "metodo_definicion": "PENALES" if m["pl"] else ("PRORROGA" if m["aet"] else "90"),
+            "metodo_definicion": "PENALES" if m["pl"] else ("PRORROGA" if aet else "90"),
         })
 
     if desconocidos:

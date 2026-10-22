@@ -1,0 +1,107 @@
+espn_id,espn_nombre,nombre_canonico,pais,origen
+2790,RB Salzburg,FC Red Bull Salzburg,AUT,cruce
+4411,LASK Linz,LASK,AUT,manual
+3746,SK Sturm Graz,SK Sturm Graz,AUT,cruce
+10414,FK Qarabag,Qarabağ Ağdam FK,AZE,cruce
+21922,Sabah FK,Sabah FK,AZE,manual
+570,Club Brugge,Club Brugge KV,BEL,cruce
+3611,KAA Gent,KAA Gent,BEL,cruce
+938,Racing Genk,KRC Genk,BEL,cruce
+441,Anderlecht,RSC Anderlecht,BEL,cruce
+17544,Antwerp,Royal Antwerp FC,BEL,cruce
+5807,Union St.-Gilloise,Royale Union Saint-Gilloise,BEL,cruce
+497,BATE Borisov,BATE Borisov,BLR,cruce
+13018,Ludogorets Razgrad,PFC Ludogorets Razgrad,BUL,cruce
+597,Dinamo Zagreb,GNK Dinamo Zagreb,CRO,cruce
+2497,Apoel Nicosia,APOEL Nikosia,CYP,cruce
+22281,Pafos,Paphos FC,CYP,cruce
+433,Sparta Prague,AC Sparta Praha,CZE,cruce
+494,Slavia Prague,SK Slavia Praha,CZE,cruce
+11706,Viktoria Plzen,Viktoria Plzeň,CZE,cruce
+909,F.C. København,FC København,DEN,cruce
+572,FC Midtjylland,FC Midtjylland,DEN,cruce
+359,Arsenal,Arsenal FC,ENG,cruce
+362,Aston Villa,Aston Villa FC,ENG,cruce
+363,Chelsea,Chelsea FC,ENG,cruce
+375,Leicester City,Leicester City,ENG,cruce
+364,Liverpool,Liverpool FC,ENG,cruce
+382,Manchester City,Manchester City FC,ENG,cruce
+360,Manchester United,Manchester United FC,ENG,cruce
+361,Newcastle United,Newcastle United FC,ENG,cruce
+367,Tottenham Hotspur,Tottenham Hotspur FC,ENG,cruce
+93,Athletic Club,Athletic Club,ESP,cruce
+1068,Atlético Madrid,Club Atlético de Madrid,ESP,cruce
+83,Barcelona,FC Barcelona,ESP,cruce
+9812,Girona,Girona FC,ESP,cruce
+244,Real Betis,Real Betis Balompié,ESP,manual
+86,Real Madrid,Real Madrid CF,ESP,cruce
+89,Real Sociedad,Real Sociedad de Fútbol,ESP,cruce
+243,Sevilla,Sevilla FC,ESP,cruce
+94,Valencia,Valencia CF,ESP,cruce
+102,Villarreal,Villarreal CF,ESP,cruce
+174,AS Monaco,AS Monaco FC,FRA,cruce
+166,Lille,Lille OSC,FRA,cruce
+167,Lyon,Olympique Lyonnais,FRA,cruce
+176,Marseille,Olympique de Marseille,FRA,cruce
+160,Paris Saint-Germain,Paris Saint-Germain FC,FRA,cruce
+175,Lens,Racing Club de Lens,FRA,cruce
+6997,Brest,Stade Brestois 29,FRA,cruce
+169,Stade Rennais,Stade Rennais,FRA,cruce
+598,1. FC Union Berlin,1. FC Union Berlin,GER,cruce
+7911,TSG Hoffenheim,1899 Hoffenheim,GER,cruce
+131,Bayer Leverkusen,Bayer 04 Leverkusen,GER,cruce
+268,Borussia Mönchengladbach,Bor. Mönchengladbach,GER,cruce
+124,Borussia Dortmund,Borussia Dortmund,GER,cruce
+125,Eintracht Frankfurt,Eintracht Frankfurt,GER,cruce
+132,Bayern Munich,FC Bayern München,GER,cruce
+133,Schalke 04,FC Schalke 04,GER,cruce
+11420,RB Leipzig,RB Leipzig,GER,cruce
+134,VfB Stuttgart,VfB Stuttgart,GER,cruce
+138,VfL Wolfsburg,VfL Wolfsburg,GER,cruce
+887,AEK Athens,AEK Athen,GRE,cruce
+435,Olympiacos,PAE Olympiakos SFP,GRE,cruce
+622,Ferencvaros,Ferencvárosi TC,HUN,cruce
+611,Maccabi Haifa,Maccabi Haifa,ISR,cruce
+524,Maccabi Tel-Aviv,Maccabi Tel Aviv,ISR,cruce
+103,AC Milan,AC Milan,ITA,cruce
+104,AS Roma,AS Roma,ITA,cruce
+105,Atalanta,Atalanta BC,ITA,cruce
+107,Bologna,Bologna FC 1909,ITA,cruce
+2572,Como,Como 1907,ITA,manual
+110,Internazionale,FC Internazionale Milano,ITA,cruce
+111,Juventus,Juventus FC,ITA,cruce
+112,Lazio,SS Lazio,ITA,cruce
+114,Napoli,SSC Napoli,ITA,cruce
+12124,FC Astana,FK Astana,KAZ,cruce
+2528,Kairat Almaty,FK Kairat,KAZ,cruce
+614,Sheriff Tiraspol,FC Sheriff,MDA,cruce
+139,Ajax Amsterdam,AFC Ajax,NED,cruce
+142,Feyenoord Rotterdam,Feyenoord Rotterdam,NED,cruce
+148,PSV Eindhoven,PSV,NED,cruce
+2980,Bodo/Glimt,FK Bodø/Glimt,NOR,cruce
+510,Viking FK,Viking FK,NOR,manual
+555,Legia Warsaw,Legia Warszawa,POL,cruce
+437,FC Porto,FC Porto,POR,cruce
+1929,Benfica,Sport Lisboa e Benfica,POR,cruce
+2994,Braga,Sporting Clube de Braga,POR,cruce
+2250,Sporting CP,Sporting Clube de Portugal,POR,cruce
+1963,CSKA Moscow,CSKA Moskva,RUS,cruce
+11336,Krasnodar,FK Krasnodar,RUS,cruce
+3852,Rostov,FK Rostov,RUS,cruce
+442,Lokomotiv Moscow,Lokomotiv Moskva,RUS,cruce
+1941,Spartak Moscow,Spartak Moskva,RUS,cruce
+2533,Zenit St Petersburg,Zenit St. Petersburg,RUS,cruce
+256,Celtic,Celtic FC,SCO,cruce
+257,Rangers,Rangers FC,SCO,cruce
+2290,Red Star Belgrade,FK Crvena Zvezda,SRB,cruce
+2722,Young Boys,BSC Young Boys,SUI,cruce
+989,FC Basel,FC Basel 1893,SUI,cruce
+521,Slovan Bratislava,ŠK Slovan Bratislava,SVK,cruce
+619,NK Maribor,NK Maribor,SVN,cruce
+2720,Malmö FF,Malmö FF,SWE,cruce
+1895,Besiktas,Beşiktaş,TUR,cruce
+436,Fenerbahce,Fenerbahçe SK,TUR,manual
+432,Galatasaray,Galatasaray SK,TUR,cruce
+7914,Istanbul Basaksehir,İstanbul Başakşehir,TUR,cruce
+440,Dynamo Kyiv,Dinamo Kiev,UKR,cruce
+493,Shakhtar Donetsk,FK Shakhtar Donetsk,UKR,cruce

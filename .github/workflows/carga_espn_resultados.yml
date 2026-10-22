@@ -1,0 +1,31 @@
+# Resultados y calendario de la temporada actual desde ESPN, cada día después de
+# la última franja de partidos (~22:00 UTC). Idempotente.
+name: carga-espn-resultados
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      temporadas:
+        description: "Años de inicio separados por coma (vacío = 2026)"
+        required: false
+
+jobs:
+  cargar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Cargar resultados ESPN
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          ARGS=""
+          if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
+          python src/ingesta/espn_resultados.py $ARGS
