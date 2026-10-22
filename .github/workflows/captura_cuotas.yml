@@ -1,0 +1,33 @@
+# Captura de cuotas ESPN cada 3 horas (requiere el secret DATABASE_URL de Supabase)
+name: captura-cuotas-espn
+
+on:
+  schedule:
+    - cron: "15 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Fecha inicial YYYY-MM-DD (backfill; vacío = ayer)"
+        required: false
+      hasta:
+        description: "Fecha final YYYY-MM-DD (vacío = hoy + 14)"
+        required: false
+
+jobs:
+  capturar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Capturar cuotas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.desde }}" ]; then ARGS="$ARGS --desde ${{ inputs.desde }}"; fi
+          if [ -n "${{ inputs.hasta }}" ]; then ARGS="$ARGS --hasta ${{ inputs.hasta }}"; fi
+          python src/ingesta/espn_cuotas.py $ARGS
