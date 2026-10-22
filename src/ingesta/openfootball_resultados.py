@@ -58,6 +58,17 @@ CORRECCIONES_PRORROGA = {
     ("2025-02-19", "PSV (NED)"): (2, 1),                        # PSV 3-1 Juventus (Flamingo 98')
     ("2025-05-06", "FC Internazionale Milano (ITA)"): (3, 3),   # Inter 4-3 Barcelona (Frattesi 99')
 }
+# Llaves de 2020-21 jugadas en un tercer país por restricciones COVID (Niké, msg #36):
+# (fecha, alias local). La vuelta Chelsea-Atlético sí fue en Stamford Bridge.
+TRASLADOS_COVID = {
+    ("2021-02-16", "RB Leipzig (GER)"),                 # Budapest
+    ("2021-03-10", "Liverpool FC (ENG)"),               # Budapest
+    ("2021-02-24", "Bor. Mönchengladbach (GER)"),       # Budapest
+    ("2021-03-16", "Manchester City (ENG)"),            # Budapest
+    ("2021-02-23", "Atlético Madrid (ESP)"),            # Bucarest
+    ("2021-04-07", "FC Porto (POR)"),                   # Sevilla
+    ("2021-04-13", "Chelsea FC (ENG)"),                 # Sevilla
+}
 MESES = {m: i for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
 
@@ -222,6 +233,7 @@ def armar_series(partidos, regla_gol_visitante):
     por_llave = defaultdict(list)
     for p in partidos:
         p["es_neutral"] = p["id_ronda"] == ID_FINAL
+        p["motivo_neutral"] = "FINAL" if p["es_neutral"] else None
         p["equipo_avanza"] = None
         p["clave_serie"] = None
         if p["id_ronda"] >= ID_PLAYOFF:
@@ -232,6 +244,7 @@ def armar_series(partidos, regla_gol_visitante):
         if len(ps) == 1:                       # partido único: final o Lisboa 2019-20
             p = ps[0]
             p["es_neutral"] = True
+            p["motivo_neutral"] = "FINAL" if id_ronda == ID_FINAL else "FINAL8_COVID"
             p["partido_serie"] = None
             p["equipo_avanza"] = ganador_partido(p)
             continue
@@ -268,6 +281,12 @@ def armar_series(partidos, regla_gol_visitante):
             "metodo_definicion": metodo, "equipo_avanza": avanza, "clave": clave,
         })
     return series
+
+
+def marcar_traslados(partidos):
+    for p in partidos:
+        if (p["fecha"], p["alias_local"]) in TRASLADOS_COVID:
+            p["es_neutral"], p["motivo_neutral"] = True, "TRASLADO_COVID"
 
 
 def goles_finales(p):
@@ -369,15 +388,15 @@ def cargar_postgres(url, crudos, todos, series, equipos):
             cx.execute(
                 """INSERT INTO gold.f_partido (
                        id_temporada, id_ronda, jornada, grupo, id_serie, partido_serie, fecha, inicio_utc,
-                       id_equipo_local, id_equipo_visita, es_neutral, estado,
+                       id_equipo_local, id_equipo_visita, es_neutral, motivo_neutral, estado,
                        goles_local_90, goles_visita_90, goles_local_prorroga, goles_visita_prorroga,
                        penales_local, penales_visita, metodo_definicion, id_equipo_avanza, id_fuente_principal)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'JUGADO',
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'JUGADO',
                            %s, %s, %s, %s, %s, %s, %s, %s, 'openfootball')
                    ON CONFLICT (id_temporada, id_ronda, id_equipo_local, id_equipo_visita) DO UPDATE SET
                        jornada = EXCLUDED.jornada, grupo = EXCLUDED.grupo, id_serie = EXCLUDED.id_serie,
                        partido_serie = EXCLUDED.partido_serie, fecha = EXCLUDED.fecha, inicio_utc = EXCLUDED.inicio_utc,
-                       es_neutral = EXCLUDED.es_neutral, estado = EXCLUDED.estado,
+                       es_neutral = EXCLUDED.es_neutral, motivo_neutral = EXCLUDED.motivo_neutral, estado = EXCLUDED.estado,
                        goles_local_90 = EXCLUDED.goles_local_90, goles_visita_90 = EXCLUDED.goles_visita_90,
                        goles_local_prorroga = EXCLUDED.goles_local_prorroga, goles_visita_prorroga = EXCLUDED.goles_visita_prorroga,
                        penales_local = EXCLUDED.penales_local, penales_visita = EXCLUDED.penales_visita,
@@ -385,6 +404,7 @@ def cargar_postgres(url, crudos, todos, series, equipos):
                        actualizado_en = now()""",
                 (p["id_temporada"], p["id_ronda"], p["jornada"], p["grupo"], serie, p["partido_serie"],
                  p["fecha"], p["inicio_utc"], id_equipo[p["local"]], id_equipo[p["visita"]], p["es_neutral"],
+                 p["motivo_neutral"],
                  p["goles_local_90"], p["goles_visita_90"], p["goles_local_prorroga"], p["goles_visita_prorroga"],
                  p["penales_local"], p["penales_visita"], p["metodo_definicion"],
                  id_equipo[p["equipo_avanza"]] if p["equipo_avanza"] else None))
@@ -413,6 +433,7 @@ def main():
         partidos = parsear(temporada, texto, equipos)
         completar_fase_grupos(partidos, temporada, grupos_2023)
         series_t = armar_series(partidos, regla_gol_visitante=int(temporada[:4]) <= 2020)
+        marcar_traslados(partidos)
         campeon = validar(temporada, texto, partidos)
         n_ronda = Counter(p["id_ronda"] for p in partidos)
         print(f"{temporada}: {len(partidos)} partidos {dict(sorted(n_ronda.items()))} · "

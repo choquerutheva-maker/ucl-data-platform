@@ -150,6 +150,7 @@ def armar_series_terminadas(partidos, id_temporada):
         for n, p in enumerate(ps, 1):
             p["partido_serie"] = n if len(ps) == 2 else None
             p["es_neutral"] = p["id_ronda"] == ID_FINAL
+            p["motivo_neutral"] = "FINAL" if p["es_neutral"] else None
             p["equipo_avanza"] = None
             p["clave_serie"] = None
     return series
@@ -231,15 +232,16 @@ def cargar_postgres(url, crudos, partidos, series, equipos):
             cur = cx.execute(
                 """INSERT INTO gold.f_partido (
                        id_temporada, id_ronda, jornada, grupo, id_serie, partido_serie, fecha, inicio_utc,
-                       id_equipo_local, id_equipo_visita, es_neutral, asistencia, estado,
+                       id_equipo_local, id_equipo_visita, es_neutral, motivo_neutral, asistencia, estado,
                        goles_local_90, goles_visita_90, goles_local_prorroga, goles_visita_prorroga,
                        penales_local, penales_visita, metodo_definicion, id_equipo_avanza, id_fuente_principal)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                            %s, %s, %s, %s, %s, %s, %s, %s, 'espn')
                    ON CONFLICT (id_temporada, id_ronda, id_equipo_local, id_equipo_visita) DO UPDATE SET
                        jornada = EXCLUDED.jornada, id_serie = EXCLUDED.id_serie,
                        partido_serie = EXCLUDED.partido_serie, fecha = EXCLUDED.fecha, inicio_utc = EXCLUDED.inicio_utc,
-                       es_neutral = EXCLUDED.es_neutral, asistencia = EXCLUDED.asistencia, estado = EXCLUDED.estado,
+                       es_neutral = EXCLUDED.es_neutral, motivo_neutral = EXCLUDED.motivo_neutral,
+                       asistencia = EXCLUDED.asistencia, estado = EXCLUDED.estado,
                        goles_local_90 = EXCLUDED.goles_local_90, goles_visita_90 = EXCLUDED.goles_visita_90,
                        goles_local_prorroga = EXCLUDED.goles_local_prorroga, goles_visita_prorroga = EXCLUDED.goles_visita_prorroga,
                        penales_local = EXCLUDED.penales_local, penales_visita = EXCLUDED.penales_visita,
@@ -248,7 +250,7 @@ def cargar_postgres(url, crudos, partidos, series, equipos):
                    WHERE gold.f_partido.id_fuente_principal = 'espn'""",
                 (p["id_temporada"], p["id_ronda"], p["jornada"], p["grupo"], serie, p["partido_serie"],
                  p["fecha"], p["inicio_utc"], id_equipo[p["local"]], id_equipo[p["visita"]], p["es_neutral"],
-                 p["asistencia"], p["estado"],
+                 p["motivo_neutral"], p["asistencia"], p["estado"],
                  p["goles_local_90"], p["goles_visita_90"], p["goles_local_prorroga"], p["goles_visita_prorroga"],
                  p["penales_local"], p["penales_visita"], p["metodo_definicion"],
                  id_equipo[p["equipo_avanza"]] if p["equipo_avanza"] else None))
