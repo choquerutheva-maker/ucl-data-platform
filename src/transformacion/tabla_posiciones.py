@@ -127,9 +127,10 @@ def partir(equipos, clave):
 # Ordenamiento
 # -----------------------------------------------------------------------------
 def ordenar(equipos, partidos, st, criterios, coeficiente):
-    """Devuelve [(equipo, aproximado)] en orden. `equipos` ya empatados en puntos."""
+    """Devuelve [(equipo, aproximado, empate)] en orden. `equipos` ya empatados en puntos.
+    `empate` = conjunto de equipos que siguen empatados en todo (comparten puesto) o None."""
     if len(equipos) == 1:
-        return [(equipos[0], False)]
+        return [(equipos[0], False, None)]
     h2h = [c for c in criterios if c.startswith("H2H_")]
     generales = [c for c in criterios if not c.startswith("H2H_") and c != "REAPLICAR_H2H"]
 
@@ -152,7 +153,7 @@ def ordenar(equipos, partidos, st, criterios, coeficiente):
 
 def ordenar_generales(equipos, st, criterios, coeficiente):
     if len(equipos) == 1:
-        return [(equipos[0], False)]
+        return [(equipos[0], False, None)]
     for i, c in enumerate(criterios):
         if c in ("DISCIPLINA", "COEFICIENTE_UEFA"):
             break
@@ -160,11 +161,22 @@ def ordenar_generales(equipos, st, criterios, coeficiente):
         if len(subgrupos) > 1:
             return [x for sg in subgrupos for x in ordenar_generales(sg, st, criterios[i + 1:], coeficiente)]
     else:
-        # Se acabaron los criterios del ranking provisional: empate real a esta altura
-        return [(e, False) for e in sorted(equipos)]
+        # Se acabaron los criterios del ranking provisional: empate real, comparten puesto (como UEFA)
+        empate = frozenset(equipos)
+        return [(e, False, empate) for e in sorted(equipos)]
     # Llegó a DISCIPLINA: sin tarjetas, se resuelve por coeficiente (o nombre) y se marca
     orden = sorted(equipos, key=lambda e: (-(coeficiente.get(e) or 0), e))
-    return [(e, True) for e in orden]
+    return [(e, True, None) for e in orden]
+
+
+def puestos(orden):
+    """[(equipo, aproximado, empate)] -> {equipo: (puesto, aproximado)}; los empatados comparten puesto."""
+    salida, previo = {}, None
+    for i, (e, aprox, empate) in enumerate(orden, 1):
+        puesto = salida[previo[0]][0] if empate is not None and previo and previo[1] == empate else i
+        salida[e] = (puesto, aprox)
+        previo = (e, empate)
+    return salida
 
 
 def tabla(partidos, criterios, coeficiente):
@@ -202,11 +214,8 @@ def calcular_temporada(id_temporada, partidos, regla, coeficiente):
             bloques[p["grupo"] if id_ronda == ID_GRUPOS else None].append(p)
         for grupo, ps in bloques.items():
             st, prov = tabla(ps, en_curso or criterios, coeficiente)
-            final = dict()
-            if es_final:
-                _, orden_final = tabla(ps, criterios, coeficiente)
-                final = {e: (i, aprox) for i, (e, aprox) in enumerate(orden_final, 1)}
-            for pos, (eq, aprox) in enumerate(prov, 1):
+            final = puestos(tabla(ps, criterios, coeficiente)[1]) if es_final else {}
+            for eq, (pos, aprox) in puestos(prov).items():
                 s = st[eq]
                 pos_final, aprox_final = final.get(eq, (None, False))
                 filas.append({
