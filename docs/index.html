@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UCL Data Platform</title>
+<meta name="description" content="Proyecto educativo de modelado estadístico: probabilidades de dos modelos (Dixon-Coles y Elo) para la UEFA Champions League 2026/27, tabla por jornada y evaluación walk-forward.">
+<meta property="og:title" content="UCL Data Platform · El fútbol tiene emoción. También tiene datos.">
+<meta property="og:description" content="Dos modelos estadísticos, sus probabilidades para cada partido de la Champions y cómo se evalúan.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23152445'/%3E%3Ctext x='16' y='23' font-family='Segoe UI,sans-serif' font-size='20' font-weight='800' fill='%23f4f6ff' text-anchor='middle'%3EU%3C/text%3E%3C/svg%3E">
+<script>
+  // Apply the saved theme before first paint (no flash)
+  try { const t = localStorage.getItem("ucl-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f0f2f7;
+    --panel: #ffffff;
+    --text: #18243c;
+    --muted: #5b6780;
+    --line: #dce2ee;
+    --soft: #e9eefb;
+    --local: #365edb;
+    --draw: #97a4ba;
+    --away: #9262ce;
+    --link: #2f53c4;
+    --ok: #1f7a3a;
+    --bad: #b3261e;
+    --band-1: #365edb;
+    --band-2: #97a4ba;
+    --band-3: #dce2ee;
+    --shadow: 0 4px 16px rgba(20, 35, 67, 0.04);
+    --hero: #152445;
+    --hero-ink: #f4f6ff;
+    --hero-muted: #bcc9e4;
+    --hero-accent: #b8a1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0c1220; --panel: #141e30; --text: #ecf0fb; --muted: #a7b3ca; --line: #2b3850; --soft: #202d48;
+      --local: #88a4ff; --draw: #7d8aa2; --away: #bf9aee; --link: #9db4ff; --ok: #5fcf7f; --bad: #ff8a80;
+      --band-1: #88a4ff; --band-2: #7d8aa2; --band-3: #2b3850; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c1220; --panel: #141e30; --text: #ecf0fb; --muted: #a7b3ca; --line: #2b3850; --soft: #202d48;
+    --local: #88a4ff; --draw: #7d8aa2; --away: #bf9aee; --link: #9db4ff; --ok: #5fcf7f; --bad: #ff8a80;
+    --band-1: #88a4ff; --band-2: #7d8aa2; --band-3: #2b3850; --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: var(--link); text-underline-offset: 3px; }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 3px solid var(--away); outline-offset: 3px; border-radius: 4px; }
+
+  /* Header */
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; font-size: 14px; letter-spacing: .04em; }
+  .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--text); color: var(--panel); font-size: 20px; font-weight: 800; }
+  .brand .muted { color: var(--muted); font-weight: 450; }
+  .top-actions { display: flex; align-items: center; gap: 16px; }
+  .repo { font-size: 14px; color: var(--text); text-decoration: none; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+  select, input[type="search"] {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; min-height: 44px;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative; overflow: hidden; background: var(--hero); color: var(--hero-ink); border-radius: 24px;
+    padding: 44px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; align-items: center;
+  }
+  .hero::before { content: ""; position: absolute; width: 450px; height: 450px; border-radius: 50%; border: 1px solid rgba(255,255,255,.05); right: -200px; top: -200px; pointer-events: none; }
+  .hero .eyebrow { color: #b9c8f1; }
+  .hero h1 { font-size: clamp(32px, 4.6vw, 56px); font-weight: 650; line-height: 1.06; letter-spacing: -.04em; margin: 16px 0; max-width: 620px; }
+  .hero h1 em { font-style: normal; color: var(--hero-accent); }
+  .hero p { color: var(--hero-muted); font-size: 16px; max-width: 500px; margin: 0; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  .hero-actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 650; text-decoration: none; color: #152445; background: #f3f5ff; }
+  .hero-actions a.secondary { background: rgba(255,255,255,.05); color: #dce5fc; border: 1px solid rgba(255,255,255,.16); }
+  .hero-graphic { display: grid; justify-items: center; gap: 12px; }
+  .donut { width: 220px; height: 220px; border-radius: 50%; padding: 16px; display: grid; }
+  .donut-center { border-radius: 50%; background: var(--hero); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; }
+  .donut-center small { color: var(--hero-muted); font-size: 11px; letter-spacing: .06em; }
+  .donut-center b { font-size: 28px; font-weight: 550; letter-spacing: -.03em; }
+  .donut-caption { color: var(--hero-muted); font-size: 13px; text-align: center; max-width: 280px; line-height: 1.45; }
+  .donut-caption strong { color: var(--hero-ink); font-weight: 600; }
+
+  .proof-strip { display: grid; grid-template-columns: repeat(3, 1fr); padding: 22px 0 18px; }
+  .proof-strip > div { padding: 0 24px; border-right: 1px solid var(--line); }
+  .proof-strip > div:first-child { padding-left: 0; }
+  .proof-strip > div:last-child { border: 0; }
+  .proof-strip b { display: block; font-size: 23px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .proof-strip span { font-size: 13px; color: var(--muted); }
+
+  /* Sticky section nav */
+  nav.sections { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  nav.sections .wrap { display: flex; gap: 6px; padding-top: 6px; padding-bottom: 6px; overflow-x: auto; scrollbar-width: none; }
+  nav.sections a { flex: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; }
+  nav.sections a:hover { background: var(--soft); color: var(--text); }
+  nav.sections a[aria-current="true"] { background: var(--text); color: var(--panel); }
+
+  /* Sections */
+  section { padding: 36px 0 8px; }
+  .eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: var(--local); }
+  h2 { font-size: 28px; letter-spacing: -.03em; line-height: 1.2; margin: 6px 0 4px; }
+  h3 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 8px; }
+  .heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 24px; flex-wrap: wrap; margin-bottom: 18px; }
+  .heading .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .heading > a { font-size: 14px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); min-width: 0; }
+  .notice { border: 1px solid var(--line); background: var(--soft); border-radius: 10px; padding: 14px 16px; font-size: 14px; line-height: 1.6; color: var(--text); margin: 0 0 16px; }
+  .notice a { font-weight: 600; }
+  .small { font-size: 13px; }
+  .note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--link); list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸"; margin-right: 8px; transition: transform .15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin: 0 0 14px; padding: 0; list-style: none; }
+  .legend li { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+  /* Jornada controls */
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: thin; }
+  .chip { flex: none; min-height: 44px; min-width: 52px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 14px; font-weight: 650; color: var(--muted); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--panel); border-color: var(--text); }
+  .filterbar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .filterbar input { width: 280px; max-width: 100%; }
+  .filterbar small { font-size: 13px; color: var(--muted); }
+
+  /* Match cards */
+  .day { grid-column: 1 / -1; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 -4px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .match-top { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .teams { display: grid; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .team { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+  .team-name { font-weight: 650; font-size: 19px; letter-spacing: -.02em; line-height: 1.2; overflow-wrap: anywhere; }
+  .team-name small { display: block; font-size: 12px; font-weight: 450; color: var(--muted); letter-spacing: 0; }
+  .team-right { text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .team-right .score { display: block; font-size: 22px; font-weight: 750; color: var(--text); line-height: 1.1; }
+  .crest { width: 34px; height: 34px; display: inline-grid; place-items: center; flex: none; }
+  .crest img { width: 34px; height: 34px; object-fit: contain; }
+  :root[data-theme="dark"] .crest img { filter: drop-shadow(0 0 1px rgba(255,255,255,.55)); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .crest img { filter: drop-shadow(0 0 1px rgba(255,255,255,.55)); } }
+  .crest-fb { width: 100%; height: 100%; border-radius: 50%; background: var(--soft); color: var(--local); display: grid; place-items: center; font-size: 10px; font-weight: 750; letter-spacing: .02em; }
+  .crest.sm, .crest.sm img { width: 22px; height: 22px; }
+  .crest.sm .crest-fb { font-size: 7px; }
+  .model { margin-top: 16px; }
+  .model-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+  .model-head strong { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; }
+  .model-head .gen { color: var(--muted); font-size: 12px; }
+  .values { display: flex; justify-content: space-between; gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; margin: 8px 0 6px; }
+  .values span { white-space: nowrap; }
+  .bar { display: flex; gap: 3px; height: 10px; }
+  .bar span { display: block; height: 100%; min-width: 2px; }
+  .bar span:first-child { border-radius: 5px 0 0 5px; }
+  .bar span:last-child { border-radius: 0 5px 5px 0; }
+  .l { background: var(--local); } .e { background: var(--draw); } .v { background: var(--away); }
+  .verdict { font-size: 13px; font-weight: 650; margin-top: 6px; }
+  .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); } .verdict.na { color: var(--muted); font-weight: 500; }
+  .disagree { margin: 16px 0 0; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+  .disagree b { color: var(--text); }
+  .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--line); }
+  .card-foot details { flex: 1 1 220px; }
+  .card-foot details[open] { flex-basis: 100%; }
+  .detail-body { font-size: 13px; color: var(--muted); padding-bottom: 8px; }
+  .detail-body dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 8px; }
+  .detail-body dt { color: var(--text); font-weight: 600; }
+  .detail-body dd { margin: 0; }
+  .btn-hist { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); font-size: 14px; font-weight: 650; cursor: pointer; color: var(--text); }
+  .btn-hist:hover { border-color: var(--local); }
+
+  /* Shapes for model identity (never the L/E/V colors) */
+  .shape { display: inline-block; width: 10px; height: 10px; flex: none; background: var(--text); }
+  .shape.circle { border-radius: 50%; }
+  .shape.diamond { transform: rotate(45deg) scale(.85); border-radius: 1px; }
+  .shape.ring { border-radius: 50%; background: transparent; border: 2px solid var(--muted); }
+  .shape.square { border-radius: 1px; background: var(--muted); }
+  .shape.ref { border-radius: 50%; background: var(--muted); }
+
+  /* States */
+  .skel { background: linear-gradient(90deg, var(--soft) 0%, var(--line) 50%, var(--soft) 100%); background-size: 200% 100%; animation: sk 1.4s ease-in-out infinite; border-radius: 10px; }
+  @keyframes sk { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  .skel-card { height: 280px; border-radius: 16px; }
+  .skel-row { height: 40px; margin-bottom: 8px; }
+  .empty { padding: 28px 20px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 14px; background: var(--panel); }
+  .empty strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 6px; }
+  .error { padding: 18px; border: 1px solid var(--bad); border-radius: 12px; color: var(--text); background: var(--panel); font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .error button { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); font-weight: 650; cursor: pointer; }
+
+  /* Standings */
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .controls label { display: grid; gap: 4px; font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .controls select { min-width: 160px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 8px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th { font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  tbody tr:last-child td { border-bottom: 0; }
+  th.l, td.l { text-align: left; }
+  td.pos { position: relative; padding-left: 14px; width: 48px; font-weight: 650; }
+  td.pos::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: 0 3px 3px 0; background: var(--band, transparent); }
+  td.club { min-width: 0; }
+  .club-cell { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  td.pts { font-weight: 750; font-size: 15px; }
+  .groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .groups h3 { font-size: 15px; margin-bottom: 4px; }
+
+  /* Evaluation */
+  .eval-layout { display: grid; grid-template-columns: 1.65fr 1fr; gap: 18px; align-items: start; }
+  .metric { display: grid; grid-template-columns: 200px minmax(0, 1fr) 64px; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .metric:last-of-type { border-bottom: 0; }
+  .metric .who { display: flex; gap: 8px; align-items: baseline; }
+  .metric .who .shape { position: relative; top: 1px; }
+  .metric .who small { display: block; color: var(--muted); font-size: 12px; }
+  .metric b { text-align: right; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .metric.reference b { color: var(--muted); }
+  .track { position: relative; height: 22px; }
+  .track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); }
+  .track .tick { position: absolute; top: 3px; bottom: 3px; width: 1px; background: var(--line); }
+  .track .ref-line { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed var(--muted); }
+  .track .shape { position: absolute; top: 50%; translate: -50% -50%; width: 12px; height: 12px; }
+  .track .shape.diamond { width: 11px; height: 11px; }
+  .axis { display: grid; grid-template-columns: 200px minmax(0, 1fr) 64px; gap: 14px; font-size: 12px; color: var(--muted); padding-top: 6px; }
+  .axis .ticks { position: relative; height: 18px; }
+  .axis .ticks span { position: absolute; translate: -50% 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .explain { padding: 24px; border-radius: 16px; background: var(--soft); }
+  .explain p { font-size: 14px; color: var(--muted); }
+  .explain .big { font-size: 38px; font-weight: 650; letter-spacing: -.04em; color: var(--text); margin: 10px 0 0; line-height: 1.1; }
+  .explain .sample { font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; }
+  .sub-block { margin-top: 28px; }
+  .chart { width: 100%; display: block; overflow: visible; }
+  svg text { font-family: inherit; }
+
+  /* History */
+  .insights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+  .insight p { margin: 0; color: var(--muted); font-size: 14px; }
+  .insight .big { font-size: 26px; font-weight: 650; color: var(--text); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .seasons { display: grid; gap: 0; }
+  .season { display: grid; grid-template-columns: 96px minmax(0, 1.3fr) minmax(0, 1fr) 64px; gap: 18px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .season:last-child { border-bottom: 0; }
+  .season.hl { background: var(--soft); margin: 0 -12px; padding: 14px 12px; border-radius: 10px; }
+  .season .yr { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .season .yr small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+  .season .champ { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; }
+  .season .champ b { font-weight: 650; }
+  .season .champ small { display: block; color: var(--muted); font-size: 12px; }
+  .season .values { margin: 0 0 6px; font-size: 12px; }
+  .season .goals { text-align: right; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 650; }
+  .season .goals small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); line-height: 1.2; }
+  .era { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 16px 0 4px; border-top: 1px dashed var(--draw); }
+
+  /* Method */
+  .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .method-grid article { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .step { font-size: 12px; font-weight: 650; letter-spacing: .08em; color: var(--local); }
+  .method-grid h3 { font-size: 16px; margin: 8px 0 6px; }
+  .method-grid p { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+  .method-grid a { font-size: 14px; font-weight: 600; }
+
+  footer { margin-top: 40px; padding: 28px 0 44px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  footer p { margin: 6px 0; }
+  .footer-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; color: var(--text); }
+
+  /* Head-to-head dialog */
+  dialog { border: 1px solid var(--line); border-radius: 18px; padding: 0; width: min(640px, calc(100vw - 32px)); max-height: min(80vh, 760px); background: var(--panel); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(12, 18, 32, .55); }
+  .dlg-head { position: sticky; top: 0; background: var(--panel); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 20px 14px; border-bottom: 1px solid var(--line); }
+  .dlg-head h2 { font-size: 20px; margin: 4px 0 0; }
+  .dlg-close { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--soft); font-size: 20px; cursor: pointer; }
+  .dlg-body { padding: 16px 20px 22px; overflow-y: auto; }
+  .h2h-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .h2h-sum div { background: var(--soft); border-radius: 10px; padding: 10px; text-align: center; }
+  .h2h-sum b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .h2h-sum span { font-size: 12px; color: var(--muted); }
+  .h2h-list { list-style: none; margin: 0; padding: 0; }
+  .h2h-list li { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+  .h2h-list li:last-child { border-bottom: 0; }
+  .h2h-meta { font-size: 12px; color: var(--muted); }
+  .h2h-score { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; flex-wrap: wrap; }
+  .h2h-score .sc { font-variant-numeric: tabular-nums; font-weight: 750; padding: 0 4px; }
+  .h2h-extra { font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr .8fr; padding: 32px; }
+    .eval-layout, .method-grid { grid-template-columns: 1fr; }
+    .season { grid-template-columns: 84px minmax(0, 1fr) 56px; }
+    .season .champ { grid-column: 2 / 4; grid-row: 2; }
+    .season .lev { grid-column: 2; grid-row: 1; }
+    .season .goals { grid-column: 3; grid-row: 1; }
+    .season .yr { grid-row: 1 / 3; align-self: start; }
+  }
+  @media (max-width: 760px) {
+    .grid, .groups, .insights { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .wrap { padding: 0 16px; }
+    .brand .muted { display: none; }
+    .top-actions { gap: 8px; }
+    .hero { grid-template-columns: 1fr; padding: 24px 20px; border-radius: 16px; gap: 18px; }
+    .hero h1 { font-size: 30px; margin: 10px 0; }
+    .hero p { font-size: 14px; }
+    .hero-actions { margin-top: 16px; gap: 8px; }
+    .hero-actions a { padding: 0 12px; font-size: 13px; }
+    .donut-caption .hint { display: none; }
+    .hero-graphic { grid-template-columns: 112px 1fr; justify-items: start; align-items: center; gap: 14px; }
+    .donut { width: 112px; height: 112px; padding: 9px; }
+    .donut-center b { font-size: 15px; }
+    .donut-center small { font-size: 8px; }
+    .donut-caption { text-align: left; font-size: 12px; }
+    .proof-strip { gap: 10px; padding: 18px 0 14px; }
+    .proof-strip > div { padding: 0 8px 0 0; }
+    .proof-strip b { font-size: 18px; }
+    .proof-strip span { font-size: 11px; display: block; line-height: 1.35; }
+    nav.sections a { padding: 0 12px; font-size: 13px; }
+    h2 { font-size: 24px; }
+    .panel { padding: 18px; }
+    .team-name { font-size: 17px; }
+    .values { font-size: 12px; }
+    .metric, .axis { grid-template-columns: 112px minmax(0, 1fr) 48px; gap: 8px; font-size: 13px; }
+    .metric b { font-size: 14px; }
+    .filterbar input { width: 100%; }
+    .controls select { min-width: 0; width: 100%; }
+    .controls label { flex: 1 1 140px; }
+    .season { grid-template-columns: 64px minmax(0, 1fr) 46px; gap: 10px; }
+    .season .goals { font-size: 15px; }
+    .season .goals small { font-size: 10px; }
+    .axis .ticks span.odd { display: none; }
+    .explain .big { font-size: 32px; }
+    dialog { width: 100vw; max-width: 100vw; max-height: 86vh; margin: auto 0 0; border-radius: 18px 18px 0 0; border-bottom: 0; }
+  }
+  @media (max-width: 360px) {
+    .values { font-size: 11px; }
+    .proof-strip { grid-template-columns: 1fr; }
+    .proof-strip > div { border: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .skel { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">U</span><span>UCL <span class="muted">DATA PLATFORM</span></span></div>
+  <div class="top-actions">
+    <a class="repo" href="https://github.com/choquerutheva-maker/ucl-data-platform" rel="noopener">GitHub ↗</a>
+    <label><span class="sr-only">Tema</span>
+      <select id="theme">
+        <option value="system">Sistema</option>
+        <option value="light">Claro</option>
+        <option value="dark">Oscuro</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Champions League · ciencia de datos</div>
+      <h1>El fútbol tiene emoción.<br><em>También tiene datos.</em></h1>
+      <p>Dos modelos estadísticos estiman la probabilidad de victoria local, empate y victoria visitante de cada partido. Aquí puedes comparar sus estimaciones y comprobar cómo se evalúan contra los resultados reales.</p>
+      <div class="hero-actions">
+        <a href="#proxima">Explorar la jornada ↓</a>
+        <a class="secondary" href="#precision">Ver la evaluación →</a>
+      </div>
+    </div>
+    <div class="hero-graphic" id="hero-graphic" hidden></div>
+  </div>
+  <div class="proof-strip" id="proof">
+    <div><b>2 modelos</b><span>Dixon-Coles v2 y Elo UCL v1</span></div>
+    <div><b id="proof-n">—</b><span>Backtest 2023/24–2025/26</span></div>
+    <div><b>Sin mirar al futuro</b><span>Evaluación walk-forward</span></div>
+  </div>
+</div>
+
+<nav class="sections" aria-label="Secciones">
+  <div class="wrap">
+    <a href="#proxima">01 · Jornada</a>
+    <a href="#tabla">02 · Tabla</a>
+    <a href="#precision">03 · Evaluación</a>
+    <a href="#historico">04 · Histórico</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- 01 · Próxima jornada -->
+  <section id="proxima" aria-labelledby="h-proxima">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">01 / Pronósticos</div>
+        <h2 id="h-proxima">Próxima jornada</h2>
+        <p class="sub" id="proxima-sub">Cargando partidos…</p>
+      </div>
+      <a href="#precision">¿Qué tan bien pronostica? →</a>
+    </div>
+    <p class="notice" role="note">Proyecto educativo de modelado estadístico. Los pronósticos se publican antes de cada partido para evaluar el modelo; no son recomendaciones de apuestas. <a href="#precision">Ver cómo se evalúan →</a></p>
+    <div class="chips" id="jornada-chips" role="group" aria-label="Elegir jornada"></div>
+    <div class="filterbar">
+      <label><span class="sr-only">Buscar equipo</span><input id="team-search" type="search" placeholder="Buscar un equipo…" autocomplete="off"></label>
+      <small id="match-count" aria-live="polite"></small>
+    </div>
+    <ul class="legend" aria-label="Leyenda">
+      <li><span class="sw l"></span>Local</li>
+      <li><span class="sw e"></span>Empate</li>
+      <li><span class="sw v"></span>Visita</li>
+      <li><span class="shape circle"></span>Dixon-Coles v2</li>
+      <li><span class="shape diamond"></span>Elo UCL v1</li>
+    </ul>
+    <div id="matches" aria-busy="true">
+      <div class="grid"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>
+    </div>
+    <p class="note" id="matches-note"></p>
+  </section>
+
+  <!-- 02 · Tabla -->
+  <section id="tabla" aria-labelledby="h-tabla">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">02 / Competición</div>
+        <h2 id="h-tabla">Tabla de posiciones</h2>
+        <p class="sub">Cómo quedó la tabla al cierre de cada jornada.</p>
+      </div>
+    </div>
+    <div class="controls">
+      <label>Temporada <select id="sel-temporada"></select></label>
+      <label>Jornada <select id="sel-jornada"></select></label>
+    </div>
+    <ul class="legend" id="tabla-legend" aria-label="Leyenda de zonas"></ul>
+    <div id="standings" aria-busy="true"><div class="panel"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
+    <p class="note" id="standings-note"></p>
+  </section>
+
+  <!-- 03 · Evaluación -->
+  <section id="precision" aria-labelledby="h-precision">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">03 / Evaluación</div>
+        <h2 id="h-precision">¿Qué tan bien pronostica?</h2>
+        <p class="sub" id="precision-sub">Cada pronóstico del backtest usa solo información disponible antes del partido evaluado.</p>
+      </div>
+    </div>
+    <div id="eval" aria-busy="true"><div class="panel"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
+  </section>
+
+  <!-- 04 · Histórico -->
+  <section id="historico" aria-labelledby="h-historico">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">04 / Archivo</div>
+        <h2 id="h-historico">El torneo, temporada a temporada</h2>
+        <p class="sub">Resultados a los 90 minutos de todas las rondas, goles por partido y finales desde 2015/16.</p>
+      </div>
+    </div>
+    <div id="history" aria-busy="true"><div class="panel"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
+  </section>
+
+  <!-- Metodología -->
+  <section id="metodologia" aria-labelledby="h-metodo">
+    <div class="heading">
+      <div>
+        <div class="eyebrow">De los datos a la evaluación</div>
+        <h2 id="h-metodo">Un proceso que se puede explicar</h2>
+      </div>
+    </div>
+    <div class="method-grid">
+      <article>
+        <span class="step">01 / PREPARAR</span>
+        <h3>Datos con fecha de corte</h3>
+        <p>Resultados, calendario y coeficientes UEFA se cargan cada día con GitHub Actions en un modelo medallion (bronze → silver → gold) sobre PostgreSQL. Cada pronóstico indica hasta qué fecha llegan los datos que usó.</p>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#arquitectura" rel="noopener">Arquitectura ↗</a>
+      </article>
+      <article>
+        <span class="step">02 / ESTIMAR</span>
+        <h3>Dos enfoques distintos</h3>
+        <p>Dixon-Coles modela los goles de cada equipo; Elo UCL resume la fuerza relativa en una calificación. Ambos dan probabilidades de local, empate y visita; sus diferencias se muestran como información, no como recomendación.</p>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#modelos" rel="noopener">Modelos ↗</a>
+      </article>
+      <article>
+        <span class="step">03 / COMPROBAR</span>
+        <h3>Evaluar después del partido</h3>
+        <p>El pronóstico previo se contrasta con el resultado a los 90 minutos. Backtest y evaluación en vivo se muestran por separado, con su muestra y su métrica.</p>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#hallazgos" rel="noopener">Resultados ↗</a>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-line"><strong>UCL / DATA PLATFORM</strong><span>Python · PostgreSQL · Supabase · GitHub Actions</span></div>
+    <p>Proyecto educativo de modelado estadístico. Los pronósticos se publican antes de cada partido para evaluar el modelo; no son recomendaciones de apuestas.</p>
+    <p><strong>Datos: openfootball, ESPN, UEFA.</strong> Escudos y nombres son marcas de sus respectivos clubes.</p>
+    <p id="updated"></p>
+  </div>
+</footer>
+
+<dialog id="h2h" aria-labelledby="h2h-title">
+  <div class="dlg-head">
+    <div>
+      <div class="eyebrow">Historial en la Champions</div>
+      <h2 id="h2h-title"></h2>
+    </div>
+    <button class="dlg-close" type="button" aria-label="Cerrar" data-close>×</button>
+  </div>
+  <div class="dlg-body" id="h2h-body"></div>
+</dialog>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm";
+
+// Public, read-only key: it can only SELECT the gold dashboard views.
+const SUPABASE_URL = "https://alreosakgluiidxqegbo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_DImc-hsSbLN6OA5G52v_0Q_vXFT6CEi";
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } }).schema("gold");
+
+// Reference figures not stored in the views (backtest in the repo, see README)
+const BASELINE = { log_loss: 1.022, acierto: 0.497 };
+const RANDOM_LOG_LOSS = Math.log(3);
+const MARKET_SUBSET = {
+  partidos: 297,
+  rows: [
+    ["Mercado (cierre ESPN BET, sin margen)", 0.877, "square", true],
+    ["Dixon-Coles v2", 0.926, "circle", false],
+    ["Dixon-Coles v1", 0.939, "ring", false],
+    ["Elo UCL v1", 0.950, "diamond", false],
+  ],
+};
+const BACKTEST_SEASONS = [2023, 2024, 2025];
+const DISAGREE_MIN = 0.15; // max absolute gap between the two live models
+
+const MODELS = {
+  "Dixon-Coles v2": { shape: "circle", live: true },
+  "Elo UCL v1": { shape: "diamond", live: true },
+  "Dixon-Coles v1": { shape: "ring", live: false, note: "solo backtest" },
+};
+const MODEL_ORDER = ["Dixon-Coles v2", "Elo UCL v1", "Dixon-Coles v1"];
+const LIVE_MODELS = ["Dixon-Coles v2", "Elo UCL v1"];
+
+// Standings bands: provisional wording until es_posicion_final
+const BANDS = {
+  LIGA: {
+    TOP8: ["var(--band-1)", "Zona de clasificación directa (1–8)", "Clasificado a octavos"],
+    PLAYOFF: ["var(--band-2)", "Zona de playoff (9–24)", "Playoff"],
+    ELIMINADO: ["var(--band-3)", "Fuera de clasificación (25–36)", "Eliminado"],
+  },
+  GRUPOS: {
+    CLASIFICA: ["var(--band-1)", "Zona de clasificación (1.º–2.º)", "Clasificado a octavos"],
+    EUROPA_LEAGUE: ["var(--band-2)", "Zona de Europa League (3.º)", "Pasa a Europa League"],
+    ELIMINADO: ["var(--band-3)", "Fuera de clasificación (4.º)", "Eliminado"],
+  },
+};
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const NA = "No disponible";
+const pct = (x, d = 0) => (x == null ? NA : (Number(x) * 100).toFixed(d).replace(".", ",") + " %");
+const num = (x, d = 2) => (x == null ? NA : Number(x).toFixed(d).replace(".", ","));
+const int = (x) => String(Math.round(Number(x))).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const fmtTime = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
+const fmtDay = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long" });
+const fmtDate = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", year: "numeric" });
+const fmtDateTime = new Intl.DateTimeFormat("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const localDate = (ymd) => new Date(ymd + "T12:00:00");
+const normalize = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const shape = (m) => `<span class="shape ${MODELS[m]?.shape ?? "ref"}" aria-hidden="true"></span>`;
+const weighted = (rows, k, w = "partidos") => rows.reduce((s, r) => s + Number(r[k]) * r[w], 0) / rows.reduce((s, r) => s + r[w], 0);
+
+async function q(view, build = (x) => x) {
+  const { data, error } = await build(db.from(view).select("*"));
+  if (error) throw new Error(`${view}: ${error.message}`);
+  return data;
+}
+
+// Per-section loading / error with retry; one failure never blanks the page
+async function run(boxId, loader) {
+  const box = $(boxId);
+  box.setAttribute("aria-busy", "true");
+  try {
+    await loader();
+  } catch (err) {
+    console.error(err);
+    box.innerHTML = `<div class="error" role="alert"><span>No se pudieron cargar estos datos.</span><button type="button">Reintentar</button></div>`;
+    box.querySelector("button").addEventListener("click", () => run(boxId, loader));
+  } finally {
+    box.setAttribute("aria-busy", "false");
+  }
+}
+
+// Crest with mandatory fallback: club code in a circle
+function crest(team, size = "") {
+  const fb = `<span class="crest-fb" aria-hidden="true">${esc(team?.codigo ?? "?")}</span>`;
+  if (!team?.escudo) return `<span class="crest ${size}">${fb}</span>`;
+  return `<span class="crest ${size}"><img src="${esc(team.escudo)}" width="34" height="34" loading="lazy" alt="Escudo de ${esc(team.corto)}" data-code="${esc(team.codigo)}"></span>`;
+}
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (img.tagName === "IMG" && img.parentElement?.classList.contains("crest")) {
+    img.parentElement.innerHTML = `<span class="crest-fb" aria-hidden="true">${esc(img.dataset.code || "?")}</span>`;
+  }
+}, true);
+
+// Teams catalogue (short name, code, crest) by canonical name
+let teams = new Map();
+const teamsReady = q("vw_dash_equipos").then((rows) => {
+  teams = new Map(rows.map((r) => [r.equipo, { corto: r.nombre_corto || r.equipo, codigo: r.codigo, escudo: r.escudo_url, grande: r.escudo_url_grande, pais: r.pais }]));
+}).catch((e) => console.error(e));
+const team = (name) => teams.get(name) ?? { corto: name, codigo: (name || "?").slice(0, 3).toUpperCase(), escudo: null };
+
+// ---------- theme ----------
+const themeSel = $("theme");
+themeSel.value = document.documentElement.dataset.theme || "system";
+themeSel.addEventListener("change", () => {
+  const v = themeSel.value;
+  if (v === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = v;
+  try { v === "system" ? localStorage.removeItem("ucl-theme") : localStorage.setItem("ucl-theme", v); } catch (e) {}
+});
+
+// ---------- scroll spy ----------
+const navLinks = [...document.querySelectorAll("nav.sections a")];
+const spy = new IntersectionObserver((entries) => {
+  for (const en of entries) {
+    if (!en.isIntersecting) continue;
+    navLinks.forEach((a) => {
+      if (a.getAttribute("href") === "#" + en.target.id) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }
+}, { rootMargin: "-40% 0px -55% 0px" });
+["proxima", "tabla", "precision", "historico"].forEach((id) => spy.observe($(id)));
+
+// ---------- 01 · Próxima jornada ----------
+let pron = [], currentJ = null;
+
+async function loadPronosticos() {
+  pron = await q("vw_dash_pronosticos", (x) => x.order("inicio_utc", { nullsFirst: false }).order("id_partido"));
+  await teamsReady;
+  if (!pron.length) {
+    $("matches").innerHTML = `<div class="empty"><strong>Todavía no hay pronósticos publicados</strong>Aparecerán aquí antes de la próxima jornada.</div>`;
+    $("proxima-sub").textContent = "";
+    return;
+  }
+  const jornadas = [...new Map(pron.map((r) => [`${r.orden_ronda}-${r.jornada}`, r])).values()]
+    .sort((a, b) => a.orden_ronda - b.orden_ronda || a.jornada - b.jornada);
+  const next = jornadas.find((j) => pron.some((r) => r.jornada === j.jornada && r.orden_ronda === j.orden_ronda && r.estado !== "JUGADO")) ?? jornadas.at(-1);
+  currentJ = next;
+  const chips = $("jornada-chips");
+  chips.innerHTML = jornadas.map((j) => {
+    const label = j.ronda === "Fase de liga" ? `J${j.jornada}` : `${esc(j.ronda)}${j.jornada ? " " + j.jornada : ""}`;
+    return `<button class="chip" type="button" data-key="${j.orden_ronda}-${j.jornada}" aria-pressed="${j === next}">${label}</button>`;
+  }).join("");
+  chips.onclick = (e) => {
+    const b = e.target.closest("button[data-key]");
+    if (!b) return;
+    chips.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    currentJ = jornadas.find((j) => `${j.orden_ronda}-${j.jornada}` === b.dataset.key);
+    renderJornada();
+  };
+  $("team-search").oninput = renderJornada;
+  renderJornada();
+  renderHero(next);
+  const gen = pron.map((r) => r.generado_en).filter(Boolean).sort().at(-1);
+  $("updated").textContent = (gen ? `Pronósticos generados por última vez el ${fmtDateTime.format(new Date(gen))}. ` : "") +
+    `Página consultada el ${fmtDateTime.format(new Date())}.`;
+}
+
+function groupMatches(rows) {
+  const byMatch = new Map();
+  for (const r of rows) {
+    if (!byMatch.has(r.id_partido)) byMatch.set(r.id_partido, { m: r, models: {} });
+    byMatch.get(r.id_partido).models[r.modelo] = r;
+  }
+  return [...byMatch.values()];
+}
+
+function renderJornada() {
+  const j = currentJ;
+  const rows = pron.filter((r) => r.jornada === j.jornada && r.orden_ronda === j.orden_ronda);
+  const all = groupMatches(rows);
+  const term = normalize($("team-search").value.trim());
+  const matches = term
+    ? all.filter(({ m }) => normalize([m.local, m.visita, m.nombre_corto_local, m.nombre_corto_visita, m.codigo_local, m.codigo_visita].join(" ")).includes(term))
+    : all;
+  const played = all.filter((x) => x.m.estado === "JUGADO").length;
+  $("proxima-sub").textContent = `${j.temporada} · ${j.ronda} · Jornada ${j.jornada} · ${all.length} partidos` + (played ? ` (${played} jugados)` : "");
+  $("match-count").textContent = term ? `${matches.length} de ${all.length} partidos` : `${all.length} partidos`;
+
+  const box = $("matches");
+  if (!matches.length) {
+    box.innerHTML = `<div class="empty"><strong>Sin coincidencias</strong>Ningún equipo de esta jornada coincide con «${esc($("team-search").value)}».</div>`;
+    return;
+  }
+  let html = "", lastDay = "";
+  for (const { m, models } of matches) {
+    const d = m.inicio_utc ? new Date(m.inicio_utc) : m.fecha ? localDate(m.fecha) : null;
+    const day = d ? fmtDay.format(d) : "Fecha por confirmar";
+    if (day !== lastDay) { html += `<p class="day">${esc(day)}</p>`; lastDay = day; }
+    html += matchCard(m, models);
+  }
+  box.innerHTML = `<div class="grid">${html}</div>`;
+  box.querySelectorAll(".btn-hist").forEach((b) => b.addEventListener("click", () => openH2H(b)));
+  $("matches-note").innerHTML =
+    `Horas en tu zona horaria (${esc(tz)}). Las probabilidades se recalculan cada día hasta el inicio del partido; se muestra la última versión generada antes de que empiece. ` +
+    `«Los modelos difieren» aparece cuando las probabilidades de un mismo resultado se separan ${Math.round(DISAGREE_MIN * 100)} puntos porcentuales o más.`;
+}
+
+function teamRow(m, side, isPlayed) {
+  const name = m[side];
+  const t = {
+    corto: m[`nombre_corto_${side}`] || name,
+    codigo: m[`codigo_${side}`] || team(name).codigo,
+    escudo: m[`escudo_${side}`] || team(name).escudo,
+  };
+  const pos = m[`posicion_${side}`], pts = m[`puntos_${side}`];
+  const posTxt = pos != null && pts != null
+    ? `<span aria-hidden="true">${pos}.º · ${pts} pts</span><span class="sr-only">${pos}.º con ${pts} puntos tras la jornada ${m.jornada_tabla}</span>`
+    : "";
+  const score = isPlayed ? `<span class="score">${m[`goles_${side}_90`] ?? ""}</span>` : "";
+  return `
+    <div class="team">
+      ${crest(t)}
+      <div class="team-name" title="${esc(name)}">${esc(t.corto)}<small>${side === "local" ? "Local" : "Visita"}</small></div>
+      <div class="team-right">${score}${posTxt}</div>
+    </div>`;
+}
+
+function modelBlock(m, k, r, isPlayed) {
+  const segs = [["Local", r.prob_local, "l"], ["Empate", r.prob_empate, "e"], ["Visita", r.prob_visita, "v"]];
+  const gen = r.generado_en ? new Date(r.generado_en) : null;
+  const late = gen && m.inicio_utc && gen >= new Date(m.inicio_utc);
+  let verdict = "";
+  if (isPlayed) {
+    if (late) verdict = `<div class="verdict na">Generado después del inicio: no se evalúa como pronóstico previo.</div>`;
+    else if (r.acierto === true) verdict = `<div class="verdict ok">✓ El resultado más probable coincidió · log loss ${num(r.log_loss, 3)}</div>`;
+    else if (r.acierto === false) verdict = `<div class="verdict bad">✗ El resultado más probable no coincidió · log loss ${num(r.log_loss, 3)}</div>`;
+    else verdict = `<div class="verdict na">Evaluación pendiente</div>`;
+  }
+  return `
+    <div class="model">
+      <div class="model-head">
+        <strong>${shape(k)}${esc(k)}</strong>
+        <span class="gen">${gen ? `Generado el ${esc(fmtDateTime.format(gen))}` : "Fecha de generación no disponible"}</span>
+      </div>
+      <div class="values">${segs.map(([lab, p]) => `<span>${lab} ${pct(p)}</span>`).join("")}</div>
+      <div class="bar" role="img" aria-label="${esc(k)}: local ${pct(r.prob_local, 1)}, empate ${pct(r.prob_empate, 1)}, visita ${pct(r.prob_visita, 1)}">
+        ${segs.map(([, p, c]) => `<span class="${c}" style="flex:${Number(p)}"></span>`).join("")}
+      </div>
+      ${verdict}
+    </div>`;
+}
+
+function disagreement(models) {
+  const a = models["Dixon-Coles v2"], b = models["Elo UCL v1"];
+  if (!a || !b) return "";
+  const lab = { prob_local: "victoria local", prob_empate: "empate", prob_visita: "victoria visitante" };
+  const [k, gap] = Object.keys(lab).map((k) => [k, Math.abs(a[k] - b[k])]).sort((x, y) => y[1] - x[1])[0];
+  if (gap < DISAGREE_MIN) return "";
+  return `<p class="disagree"><b>Los modelos difieren:</b> ${Math.round(gap * 100)} puntos porcentuales en la probabilidad de ${lab[k]}.</p>`;
+}
+
+function details(m, models) {
+  const dc = models["Dixon-Coles v2"], elo = models["Elo UCL v1"];
+  const sL = m.nombre_corto_local || m.local, sV = m.nombre_corto_visita || m.visita;
+  const xg = (r) => r && r.goles_esp_local != null
+    ? `${esc(sL)} ${num(r.goles_esp_local, 2)} · ${esc(sV)} ${num(r.goles_esp_visita, 2)}` : NA;
+  const rounded = Object.values(models).some((r) =>
+    [r.prob_local, r.prob_empate, r.prob_visita].reduce((s, p) => s + Math.round(p * 100), 0) !== 100);
+  const cut = [...new Set(Object.values(models).map((r) => r.datos_hasta).filter(Boolean))];
+  return `
+    <details>
+      <summary>Goles esperados y detalles</summary>
+      <div class="detail-body">
+        <dl>
+          ${dc ? `<dt>Dixon-Coles v2</dt><dd>Goles esperados: ${xg(dc)}<br>Probabilidad de 3 o más goles: ${pct(dc.prob_over_2_5)}</dd>` : ""}
+          ${elo ? `<dt>Elo UCL v1</dt><dd>Goles esperados: ${xg(elo)}<br>Probabilidad de 3 o más goles: ${pct(elo.prob_over_2_5)}<br><small>Elo solo estima local, empate y visita.</small></dd>` : ""}
+          <dt>Datos hasta</dt><dd>${cut.length ? cut.map((c) => esc(fmtDate.format(localDate(c)))).join(" / ") : NA}</dd>
+          <dt>Nombres</dt><dd>${esc(m.local)} – ${esc(m.visita)}</dd>
+        </dl>
+        ${rounded ? `<p>Los porcentajes redondeados pueden sumar 99 % o 101 %; las barras usan las probabilidades sin redondear.</p>` : ""}
+      </div>
+    </details>`;
+}
+
+function matchCard(m, models) {
+  const isPlayed = m.estado === "JUGADO";
+  const d = m.inicio_utc ? new Date(m.inicio_utc) : null;
+  const when = d ? fmtTime.format(d) : "Horario por confirmar";
+  const status = isPlayed ? "Final · 90 minutos" : "Programado";
+  return `
+    <article class="panel" aria-label="${esc((m.nombre_corto_local || m.local) + " contra " + (m.nombre_corto_visita || m.visita))}">
+      <div class="match-top"><span>${esc(when)}</span><span>${status}</span></div>
+      <div class="teams">${teamRow(m, "local", isPlayed)}${teamRow(m, "visita", isPlayed)}</div>
+      ${LIVE_MODELS.filter((k) => models[k]).map((k) => modelBlock(m, k, models[k], isPlayed)).join("")}
+      ${disagreement(models)}
+      <div class="card-foot">
+        ${details(m, models)}
+        <button class="btn-hist" type="button" data-a="${esc(m.local)}" data-b="${esc(m.visita)}">Historial</button>
+      </div>
+    </article>`;
+}
+
+// Hero donut: first match of the upcoming matchday, Dixon-Coles v2, clearly labelled as an example
+function renderHero(j) {
+  const row = pron.find((r) => r.jornada === j.jornada && r.orden_ronda === j.orden_ronda && r.modelo === "Dixon-Coles v2" && r.estado !== "JUGADO"
+    && r.prob_local != null && r.prob_empate != null && r.prob_visita != null && r.inicio_utc);
+  const box = $("hero-graphic");
+  if (!row) { box.hidden = true; return; }
+  const a = row.prob_local * 100, b = a + row.prob_empate * 100;
+  const sL = row.nombre_corto_local || row.local, sV = row.nombre_corto_visita || row.visita;
+  const r = (p) => Math.round(p * 100);
+  box.innerHTML = `
+    <div class="donut" style="background:conic-gradient(#88a4ff 0 ${a}%, #7d8aa2 ${a}% ${b}%, #bf9aee ${b}% 100%)" role="img"
+      aria-label="Ejemplo: ${esc(sL)} contra ${esc(sV)}, Dixon-Coles v2: local ${pct(row.prob_local)}, empate ${pct(row.prob_empate)}, visita ${pct(row.prob_visita)}">
+      <div class="donut-center"><small>DIXON-COLES v2</small><b>${r(row.prob_local)} / ${r(row.prob_empate)} / ${r(row.prob_visita)}</b><small>LOCAL · EMPATE · VISITA (%)</small></div>
+    </div>
+    <p class="donut-caption">Ejemplo: <strong>${esc(sL)} – ${esc(sV)}</strong><br>${esc(row.ronda)} · J${row.jornada} · ${esc(fmtDay.format(new Date(row.inicio_utc)))}<span class="hint"><br>Probabilidades, no certezas.</span></p>`;
+  box.hidden = false;
+}
+
+// ---------- Head-to-head dialog ----------
+const dlg = $("h2h");
+let opener = null;
+dlg.addEventListener("close", () => { opener?.focus(); });
+dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
+
+async function openH2H(btn) {
+  opener = btn;
+  const A = btn.dataset.a, B = btn.dataset.b;
+  const tA = team(A), tB = team(B);
+  $("h2h-title").textContent = `${tA.corto} – ${tB.corto}`;
+  const body = $("h2h-body");
+  body.innerHTML = `<div class="skel skel-row"></div><div class="skel skel-row"></div>`;
+  dlg.showModal();
+  const load = async () => {
+    try {
+      const rows = await q("vw_dash_partidos", (x) => x.in("local", [A, B]).in("visita", [A, B]).order("fecha", { ascending: false }));
+      body.innerHTML = renderH2H(rows, A, B);
+    } catch (err) {
+      console.error(err);
+      body.innerHTML = `<div class="error" role="alert"><span>No se pudo cargar el historial.</span><button type="button">Reintentar</button></div>`;
+      body.querySelector("button").addEventListener("click", load);
+    }
+  };
+  load();
+}
+
+function renderH2H(rows, A, B) {
+  const tA = team(A), tB = team(B);
+  if (!rows.length) return `<div class="empty"><strong>Primer enfrentamiento en la Champions desde 2015-16.</strong>No hay partidos previos entre ${esc(tA.corto)} y ${esc(tB.corto)} en los datos del proyecto.</div>`;
+  let wA = 0, wB = 0, dr = 0;
+  for (const r of rows) {
+    if (r.resultado_90 === "E") dr++;
+    else if ((r.resultado_90 === "L" ? r.local : r.visita) === A) wA++;
+    else wB++;
+  }
+  const how = (r) => {
+    const out = [];
+    if (r.metodo_definicion === "PRORROGA" || r.metodo_definicion === "PENALES") {
+      if (r.goles_local_prorroga != null) out.push(`Tras la prórroga: ${r.goles_local_prorroga}–${r.goles_visita_prorroga}`);
+    }
+    if (r.metodo_definicion === "PENALES" && r.penales_local != null) out.push(`Penales: ${r.penales_local}–${r.penales_visita}`);
+    if (r.avanza) out.push(`Avanzó: ${esc(team(r.avanza).corto)}`);
+    if (r.es_neutral) out.push("Sede neutral");
+    return out.join(" · ");
+  };
+  return `
+    <p class="small muted" style="margin-top:0">Resultados a los 90 minutos · ${rows.length} ${rows.length === 1 ? "partido" : "partidos"} desde 2015-16</p>
+    <div class="h2h-sum">
+      <div><b>${wA}</b><span>Ganó ${esc(tA.corto)}</span></div>
+      <div><b>${dr}</b><span>Empates</span></div>
+      <div><b>${wB}</b><span>Ganó ${esc(tB.corto)}</span></div>
+    </div>
+    <ul class="h2h-list">${rows.map((r) => {
+      const l = team(r.local), v = team(r.visita);
+      const extra = how(r);
+      const stage = r.grupo ? `${esc(r.ronda)} · Grupo ${esc(r.grupo)}` : esc(r.ronda) + (r.jornada && r.ronda === "Fase de liga" ? ` · J${r.jornada}` : "");
+      return `<li>
+        <span class="h2h-meta">${esc(r.temporada)} · ${stage} · ${esc(fmtDate.format(localDate(r.fecha)))}</span>
+        <span class="h2h-score">${crest(l, "sm")}${esc(l.corto)} <span class="sc">${r.goles_local_90}–${r.goles_visita_90}</span> ${esc(v.corto)}${crest(v, "sm")}</span>
+        ${extra ? `<span class="h2h-extra">${extra}</span>` : ""}
+      </li>`;
+    }).join("")}</ul>`;
+}
+
+// ---------- 02 · Tabla ----------
+let cortes = [];
+async function loadTabla() {
+  cortes = await q("vw_dash_tabla", (x) => x
+    .select("id_temporada,temporada,formato,jornada,es_ultima_jornada,es_posicion_final,fecha_corte")
+    .eq("posicion", 1).or("grupo.is.null,grupo.eq.A")
+    .order("id_temporada", { ascending: false }).order("jornada"));
+  await teamsReady;
+  const seasons = [...new Map(cortes.map((c) => [c.id_temporada, c])).values()];
+  const selT = $("sel-temporada"), selJ = $("sel-jornada");
+  selT.innerHTML = seasons.map((s) => `<option value="${s.id_temporada}">${esc(s.temporada)}</option>`).join("");
+  const fillJ = () => {
+    const js = cortes.filter((c) => c.id_temporada === Number(selT.value));
+    selJ.innerHTML = js.map((c) => `<option value="${c.jornada}">Jornada ${c.jornada}${c.es_ultima_jornada ? " (última)" : ""}</option>`).join("");
+    selJ.value = String(js.at(-1).jornada);
+  };
+  selT.onchange = () => { fillJ(); run("standings", renderTabla); };
+  selJ.onchange = () => run("standings", renderTabla);
+  fillJ();
+  await renderTabla();
+}
+
+async function renderTabla() {
+  const t = Number($("sel-temporada").value), j = Number($("sel-jornada").value);
+  const corte = cortes.find((c) => c.id_temporada === t && c.jornada === j);
+  const rows = await q("vw_dash_tabla", (x) => x.eq("id_temporada", t).eq("jornada", j).order("grupo").order("posicion"));
+  const bands = BANDS[corte.formato] ?? BANDS.LIGA;
+  const final = rows.length > 0 && rows.every((r) => r.es_posicion_final);
+  const label = (f) => bands[f] ? bands[f][final ? 2 : 1] : "";
+  $("tabla-legend").innerHTML = Object.entries(bands).map(([, b]) =>
+    `<li><span class="sw" style="background:${b[0]};border-radius:2px"></span>${final ? b[2] : b[1]}</li>`).join("");
+  const table = (list, caption) => `
+    <div class="table-wrap"><table>
+      <caption class="sr-only">${esc(caption)}</caption>
+      <thead><tr><th class="l" scope="col">Pos</th><th class="l" scope="col">Equipo</th><th scope="col">PJ</th><th scope="col">DG</th><th scope="col">Pts</th></tr></thead>
+      <tbody>${list.map((r) => {
+        const tm = team(r.equipo);
+        return `<tr>
+          <td class="l pos" style="--band:${bands[r.franja]?.[0] ?? "transparent"}">${r.posicion}${r.desempate_aproximado ? "*" : ""}<span class="sr-only"> · ${esc(label(r.franja))}</span></td>
+          <td class="l club"><span class="club-cell" title="${esc(r.equipo)}">${crest(tm, "sm")}${esc(tm.corto)}</span></td>
+          <td>${r.pj}</td>
+          <td>${r.dg > 0 ? "+" : ""}${r.dg}</td>
+          <td class="pts">${r.puntos}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table></div>`;
+  const box = $("standings");
+  if (!rows.length) {
+    box.innerHTML = `<div class="empty"><strong>Sin datos para esta jornada</strong>Prueba con otra jornada o temporada.</div>`;
+  } else if (corte.formato === "GRUPOS") {
+    const groups = [...new Set(rows.map((r) => r.grupo))];
+    box.innerHTML = `<div class="groups">${groups.map((g) =>
+      `<div class="panel"><h3>Grupo ${esc(g)}</h3>${table(rows.filter((r) => r.grupo === g), `Grupo ${g}, jornada ${j}`)}</div>`).join("")}</div>`;
+  } else {
+    box.innerHTML = `<div class="panel">${table(rows, `Fase de liga, jornada ${j}`)}</div>`;
+  }
+  const approx = rows.some((r) => r.desempate_aproximado);
+  $("standings-note").textContent =
+    `${corte.temporada} · ${corte.formato === "LIGA" ? "Fase de liga" : "Fase de grupos"} · corte al ${fmtDate.format(localDate(corte.fecha_corte))}.` +
+    (final ? " Posiciones finales." : " Clasificación provisional.") +
+    (approx ? " * Orden aproximado: no se pudieron aplicar todos los criterios de desempate de la UEFA." : "");
+}
+
+// ---------- 03 · Evaluación ----------
+let perf = [];
+async function loadEval() {
+  const [p, market] = await Promise.all([
+    q("vw_dash_desempeno_modelos", (x) => x.order("id_temporada")),
+    q("vw_dash_mercado_en_vivo", (x) => x.order("jornada")),
+  ]);
+  perf = p;
+  const bt = perf.filter((r) => r.tipo === "BACKTEST" && BACKTEST_SEASONS.includes(r.id_temporada));
+  const agg = Object.fromEntries(MODEL_ORDER.map((m) => {
+    const rows = bt.filter((r) => r.modelo === m);
+    return [m, rows.length ? { partidos: rows.reduce((s, r) => s + r.partidos, 0), log_loss: weighted(rows, "log_loss"), acierto: weighted(rows, "acierto") } : null];
+  }));
+  const n = agg["Dixon-Coles v2"]?.partidos;
+  if (n) {
+    $("proof-n").textContent = `${int(n)} partidos`;
+    $("precision-sub").textContent = `Backtest 2023/24–2025/26 · ${int(n)} partidos · cada pronóstico usa solo información disponible antes del partido evaluado.`;
+  }
+
+  // Shared scale for both summary panels so positions are comparable
+  const vals = [...Object.values(agg).filter(Boolean).map((a) => a.log_loss), BASELINE.log_loss, RANDOM_LOG_LOSS, ...MARKET_SUBSET.rows.map((r) => r[1])];
+  const lo = Math.floor((Math.min(...vals) - 0.02) * 20) / 20, hi = Math.ceil((Math.max(...vals) + 0.01) * 20) / 20;
+  const X = (v) => ((v - lo) / (hi - lo)) * 100;
+  const ticks = []; for (let v = lo; v <= hi + 1e-9; v += 0.05) ticks.push(+v.toFixed(2));
+  const track = (v, shp) => `<div class="track">${ticks.map((t) => `<span class="tick" style="left:${X(t)}%"></span>`).join("")}
+      <span class="ref-line" style="left:${X(RANDOM_LOG_LOSS)}%" title="Azar"></span>
+      <span class="shape ${shp}" style="left:${X(v)}%"></span></div>`;
+  const axis = `<div class="axis" aria-hidden="true"><span></span><div class="ticks">${ticks.map((t, i) => `<span class="${i % 2 ? "odd" : ""}" style="left:${X(t)}%">${num(t, 2)}</span>`).join("")}</div><span></span></div>`;
+
+  const mainRows = [
+    ...MODEL_ORDER.filter((m) => agg[m]).map((m) => `
+      <div class="metric">
+        <div class="who">${shape(m)}<span>${esc(m)}${MODELS[m].note ? ` · ${MODELS[m].note}` : ""}<small>Acierto ${pct(agg[m].acierto, 1)}</small></span></div>
+        ${track(agg[m].log_loss, MODELS[m].shape)}<b>${num(agg[m].log_loss, 3)}</b>
+      </div>`),
+    `<div class="metric reference">
+        <div class="who"><span class="shape ref" aria-hidden="true"></span><span>Frecuencia histórica · referencia<small>Acierto ${pct(BASELINE.acierto, 1)}</small></span></div>
+        ${track(BASELINE.log_loss, "ref")}<b>${num(BASELINE.log_loss, 3)}</b>
+      </div>`,
+  ].join("");
+
+  const marketRows = MARKET_SUBSET.rows.map(([name, v, shp, isRef]) => `
+      <div class="metric${isRef ? " reference" : ""}">
+        <div class="who"><span class="shape ${shp}" aria-hidden="true"></span><span>${esc(name)}</span></div>
+        ${track(v, shp)}<b>${num(v, 3)}</b>
+      </div>`).join("");
+
+  const dc = agg["Dixon-Coles v2"];
+  $("eval").innerHTML = `
+    <div class="eval-layout">
+      <div class="panel">
+        <div class="heading" style="margin-bottom:6px"><h3>Calidad de las probabilidades · log loss</h3><span class="small muted">← menor es mejor</span></div>
+        ${mainRows}${axis}
+        <p class="note">Promedio ponderado por partidos de las temporadas 2023/24, 2024/25 y 2025/26 (${int(n)} partidos). La línea discontinua marca el azar: ${num(RANDOM_LOG_LOSS, 3)}, es decir, dar 33 % a cada resultado.</p>
+        <details>
+          <summary>Ver tabla con los datos</summary>
+          <div class="table-wrap"><table>
+            <thead><tr><th class="l">Modelo</th><th>Partidos</th><th>Log loss</th><th>Acierto</th></tr></thead>
+            <tbody>
+              ${MODEL_ORDER.filter((m) => agg[m]).map((m) => `<tr><td class="l">${esc(m)}</td><td>${agg[m].partidos}</td><td>${num(agg[m].log_loss, 4)}</td><td>${pct(agg[m].acierto, 1)}</td></tr>`).join("")}
+              <tr><td class="l">Frecuencia histórica</td><td>${int(n)}</td><td>${num(BASELINE.log_loss, 3)}</td><td>${pct(BASELINE.acierto, 1)}</td></tr>
+            </tbody>
+          </table></div>
+        </details>
+      </div>
+      <aside class="explain">
+        <div class="eyebrow">Resultados con contexto</div>
+        <h3 style="margin-top:8px">El acierto no cuenta toda la historia.</h3>
+        <p class="big">${pct(dc?.acierto, 1)}</p>
+        <p style="margin-top:4px">Acierto de Dixon-Coles v2 en el backtest: el resultado más probable coincidió con el real.</p>
+        <p>Pero un modelo puede acertar el resultado más probable y aun así asignar probabilidades poco fiables. El <b>log loss</b> mide la calidad de las probabilidades: <b>menor es mejor; 1,10 = adivinar al azar</b>. Penaliza sobre todo los errores cometidos con mucha confianza.</p>
+        <p class="sample">Las diferencias pequeñas entre modelos no demuestran por sí solas que uno sea superior.</p>
+      </aside>
+    </div>
+
+    <div class="sub-block panel">
+      <div class="heading" style="margin-bottom:6px"><h3>Referencia: el mercado</h3><span class="small muted">← menor es mejor</span></div>
+      <p class="small muted" style="margin-top:0">Otra muestra: ${MARKET_SUBSET.partidos} partidos de 2024/25 y 2025/26 con cuota de cierre de ESPN BET, sin margen (método de Shin). Cálculo del backtest guardado en el repositorio. No es comparable con el panel anterior.</p>
+      ${marketRows}${axis}
+      <p class="note">En esta muestra, el mercado obtuvo menor log loss que los tres modelos. Solo se publican agregados; nunca cuotas ni probabilidades del mercado por partido.</p>
+    </div>
+
+    <div class="sub-block">
+      <h3>Log loss por temporada</h3>
+      <ul class="legend" aria-label="Leyenda">
+        ${MODEL_ORDER.map((m) => `<li>${shape(m)}${esc(m)}${MODELS[m].note ? ` (${MODELS[m].note})` : ""}</li>`).join("")}
+        <li><span class="shape ref" style="width:2px;height:12px;border-radius:0"></span>Referencias</li>
+      </ul>
+      <div class="panel" id="season-chart" style="padding:12px 8px 6px"></div>
+      <details>
+        <summary>Ver tabla por temporada</summary>
+        <div class="table-wrap" id="season-table"></div>
+      </details>
+    </div>
+
+    <div class="sub-block">
+      <h3>Evaluación en vivo</h3>
+      <div id="live"></div>
+    </div>
+
+    <div class="sub-block">
+      <h3>En vivo contra el mercado, por jornada</h3>
+      <div id="market"></div>
+    </div>`;
+  renderSeasonChart();
+  renderLive(perf.filter((r) => r.tipo === "EN_VIVO"));
+  renderMarket(market);
+}
+
+function svgShape(shp, cx, cy, r = 6) {
+  if (shp === "diamond") return `<rect x="${cx - r * 0.75}" y="${cy - r * 0.75}" width="${r * 1.5}" height="${r * 1.5}" transform="rotate(45 ${cx} ${cy})" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
+  if (shp === "ring") return `<circle cx="${cx}" cy="${cy}" r="${r - 1.5}" fill="var(--panel)" stroke="var(--muted)" stroke-width="2"/>`;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
+}
+
+function renderSeasonChart() {
+  const rows = perf.filter((r) => r.tipo === "BACKTEST");
+  const box = $("season-chart");
+  if (!rows.length) { box.innerHTML = `<div class="empty">Sin datos de backtest.</div>`; return; }
+  const models = MODEL_ORDER.filter((m) => rows.some((r) => r.modelo === m));
+  const seasons = [...new Map(rows.map((r) => [r.id_temporada, r])).values()].sort((a, b) => a.id_temporada - b.id_temporada);
+  const partial = (s) => !BACKTEST_SEASONS.includes(s.id_temporada) && s.id_temporada > Math.max(...BACKTEST_SEASONS);
+  const W = Math.max(280, box.clientWidth - 16 || 600);
+  const left = W < 480 ? 70 : 96, right = 14, top = 48, rowH = 40, bottom = 30;
+  const H = top + rowH * seasons.length + bottom;
+  const lo = Math.min(0.78, Math.floor((Math.min(...rows.map((r) => r.log_loss)) - 0.02) * 20) / 20);
+  const hi = Math.max(1.12, Math.max(...rows.map((r) => r.log_loss)) + 0.02);
+  const x = (v) => left + ((v - lo) / (hi - lo)) * (W - left - right);
+  const step = W < 420 ? 0.1 : 0.05;
+  let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-labelledby="sc-t"><title id="sc-t">Log loss por temporada y modelo; menor es mejor. Los datos están en la tabla siguiente.</title>`;
+  for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) {
+    svg += `<line x1="${x(t)}" x2="${x(t)}" y1="${top - 6}" y2="${H - bottom}" stroke="var(--line)"/>`;
+    svg += `<text x="${x(t)}" y="${H - bottom + 18}" text-anchor="middle" font-size="11" fill="var(--muted)">${num(t, 2)}</text>`;
+  }
+  [[BASELINE.log_loss, "Frecuencia 1,022", top - 12], [RANDOM_LOG_LOSS, "Azar 1,10", top - 28]].forEach(([v, lab, ly]) => {
+    svg += `<line x1="${x(v)}" x2="${x(v)}" y1="${ly + 4}" y2="${H - bottom}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    svg += `<text x="${x(v) + 4}" y="${ly}" text-anchor="end" font-size="11" font-weight="600" fill="var(--muted)">${lab}</text>`;
+  });
+  svg += `<text x="${left}" y="${top - 12}" font-size="11" fill="var(--muted)">← mejor</text>`;
+  seasons.forEach((s, i) => {
+    const cy = top + rowH * i + rowH / 2;
+    svg += `<text x="${left - 10}" y="${cy + (partial(s) ? -2 : 4)}" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.temporada)}</text>`;
+    if (partial(s)) svg += `<text x="${left - 10}" y="${cy + 12}" text-anchor="end" font-size="10" fill="var(--muted)">J1–J3</text>`;
+    const pts = rows.filter((r) => r.id_temporada === s.id_temporada);
+    const xs = pts.map((r) => x(r.log_loss));
+    svg += `<line x1="${Math.min(...xs)}" x2="${Math.max(...xs)}" y1="${cy}" y2="${cy}" stroke="var(--line)" stroke-width="2"/>`;
+    models.slice().reverse().forEach((m) => {
+      const r = pts.find((p) => p.modelo === m);
+      if (r) svg += `<g><title>${esc(m)} · ${esc(r.temporada)}: log loss ${num(r.log_loss, 3)}, acierto ${pct(r.acierto, 1)}, ${r.partidos} partidos</title>${svgShape(MODELS[m].shape, x(r.log_loss), cy, MODELS[m].live ? 6 : 5)}</g>`;
+    });
+  });
+  box.innerHTML = svg + `</svg>`;
+  $("season-table").innerHTML = `<table>
+    <thead><tr><th class="l">Temporada</th><th class="l">Modelo</th><th>Partidos</th><th>Log loss</th><th>Brier</th><th>Acierto</th></tr></thead>
+    <tbody>${seasons.flatMap((s) => models.map((m) => rows.find((r) => r.id_temporada === s.id_temporada && r.modelo === m)).filter(Boolean)
+      .map((r) => `<tr><td class="l">${esc(r.temporada)}${partial(s) ? " (J1–J3)" : ""}</td><td class="l">${esc(r.modelo)}</td><td>${r.partidos}</td><td>${num(r.log_loss, 3)}</td><td>${num(r.brier, 3)}</td><td>${pct(r.acierto, 1)}</td></tr>`)).join("")}
+    </tbody></table>`;
+  $("season-table").insertAdjacentHTML("beforeend", `<p class="note">2026/27 (J1–J3) es una reconstrucción de backtest de la temporada en curso; no entra en el total.</p>`);
+}
+
+function renderLive(rows) {
+  const box = $("live");
+  if (!rows.length) {
+    box.innerHTML = `<div class="empty"><strong>Evaluación en vivo aún no disponible</strong>Los pronósticos en vivo empiezan con la jornada 4 (3 y 4 de noviembre). Cuando se jueguen los partidos, aquí aparecerán el log loss y el acierto de Dixon-Coles v2 y Elo UCL v1.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="panel">${LIVE_MODELS.filter((m) => rows.some((r) => r.modelo === m)).map((m) => {
+    const rs = rows.filter((r) => r.modelo === m);
+    const n = rs.reduce((s, r) => s + r.partidos, 0);
+    return `<div class="metric"><div class="who">${shape(m)}<span>${esc(m)}<small>${n} partidos · acierto ${pct(weighted(rs, "acierto"), 1)}</small></span></div><div></div><b>${num(weighted(rs, "log_loss"), 3)}</b></div>`;
+  }).join("")}<p class="note">Log loss en vivo (menor es mejor). Muestra pequeña: interpretar con cautela.</p></div>`;
+}
+
+function renderMarket(rows) {
+  const box = $("market");
+  if (!rows.length) {
+    box.innerHTML = `<div class="empty"><strong>Comparación aún no disponible</strong>Desde la jornada 4 se mostrará, por jornada con al menos 5 partidos, la diferencia de log loss entre cada modelo y el mercado. Solo agregados.</div>`;
+    return;
+  }
+  const jornadas = [...new Set(rows.map((r) => r.jornada))].sort((a, b) => a - b);
+  const W = Math.max(280, (box.clientWidth || 600) - 16);
+  const left = 64, right = 16, top = 16, rowH = 40, bottom = 30;
+  const H = top + rowH * jornadas.length + bottom;
+  const ext = Math.max(0.1, ...rows.map((r) => Math.abs(r.diferencia))) * 1.15;
+  const x = (v) => left + ((v + ext) / (2 * ext)) * (W - left - right);
+  let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Diferencia de log loss modelo menos mercado por jornada; negativo significa que el modelo tuvo menor log loss">`;
+  svg += `<line x1="${x(0)}" x2="${x(0)}" y1="${top - 4}" y2="${H - bottom}" stroke="var(--muted)" stroke-width="1.5"/>`;
+  svg += `<text x="${x(-ext) }" y="${H - bottom + 18}" font-size="11" fill="var(--muted)">← modelo mejor</text>`;
+  svg += `<text x="${x(ext)}" y="${H - bottom + 18}" text-anchor="end" font-size="11" fill="var(--muted)">mercado mejor →</text>`;
+  jornadas.forEach((j, i) => {
+    const cy = top + rowH * i + rowH / 2;
+    svg += `<text x="${left - 10}" y="${cy + 4}" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">J${j}</text>`;
+    svg += `<line x1="${left}" x2="${W - right}" y1="${cy}" y2="${cy}" stroke="var(--line)"/>`;
+    rows.filter((r) => r.jornada === j).forEach((r) => {
+      svg += `<g><title>${esc(r.modelo)} · J${j}: ${r.partidos} partidos, diferencia ${num(r.diferencia, 3)}</title>${svgShape(MODELS[r.modelo]?.shape ?? "circle", x(r.diferencia), cy)}</g>`;
+    });
+  });
+  box.innerHTML = `<div class="panel" style="padding:12px 8px 6px">${svg}</svg></div>
+    <p class="note">Diferencia = log loss del modelo − log loss del mercado. Negativo = el modelo tuvo menor log loss. Solo jornadas con al menos 5 partidos.</p>
+    <details><summary>Ver tabla con los datos</summary><div class="table-wrap"><table>
+      <thead><tr><th class="l">Jornada</th><th class="l">Modelo</th><th>Partidos</th><th>Modelo</th><th>Mercado</th><th>Diferencia</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr><td class="l">J${r.jornada}</td><td class="l">${esc(r.modelo)}</td><td>${r.partidos}</td><td>${num(r.log_loss_modelo, 3)}</td><td>${num(r.log_loss_mercado, 3)}</td><td>${r.diferencia > 0 ? "+" : ""}${num(r.diferencia, 3)}</td></tr>`).join("")}</tbody>
+    </table></div></details>`;
+}
+
+// ---------- 04 · Histórico ----------
+async function loadHistory() {
+  const rows = (await q("vw_dash_temporadas")).sort((a, b) => a.temporada.localeCompare(b.temporada));
+  await teamsReady;
+  const done = rows.filter((r) => r.campeon);
+  const covid = rows.find((r) => r.temporada === "2020/21");
+  const grupos = done.filter((r) => r.formato === "GRUPOS");
+  const liga = done.filter((r) => r.formato === "LIGA");
+  const rest = grupos.filter((r) => r !== covid);
+  const sumN = (l) => l.reduce((s, r) => s + r.partidos, 0);
+
+  const insights = [];
+  if (covid && rest.length) insights.push(`
+    <div class="panel insight">
+      <h3>2020/21: local y visita, casi parejos</h3>
+      <p><span class="big">${pct(covid.pct_local, 1)}</span> local · <span class="big">${pct(covid.pct_visita, 1)}</span> visita (n = ${covid.partidos})</p>
+      <p style="margin-top:8px">Local y visita tuvieron resultados casi parejos en 2020/21, la temporada sin público. En el resto de 2015/16 a 2023/24: ${pct(weighted(rest, "pct_local"), 1)} y ${pct(weighted(rest, "pct_visita"), 1)} (n = ${int(sumN(rest))}).</p>
+    </div>`);
+  if (grupos.length && liga.length) insights.push(`
+    <div class="panel insight">
+      <h3>Fase de liga: menos empates</h3>
+      <p><span class="big">${pct(weighted(grupos, "pct_empate"), 1)}</span> → <span class="big">${pct(weighted(liga, "pct_empate"), 1)}</span> empates</p>
+      <p style="margin-top:8px">De 2015/16 a 2023/24 (n = ${int(sumN(grupos))}) frente a 2024/25 y 2025/26 (n = ${int(sumN(liga))}). Goles por partido: ${num(weighted(grupos, "goles_por_partido"), 2)} → ${num(weighted(liga, "goles_por_partido"), 2)}. Sin 2026/27, en curso.</p>
+    </div>`);
+
+  const how = { PENALES: "final por penales", PRORROGA: "final en prórroga" };
+  let list = "", prev = null;
+  for (const r of rows) {
+    if (prev && r.formato !== prev) list += `<p class="era">Desde 2024/25 · fase de liga de 36 equipos</p>`;
+    prev = r.formato;
+    const ongoing = !r.campeon;
+    const c = ongoing ? null : team(r.campeon), f = r.finalista ? team(r.finalista) : null;
+    list += `
+      <div class="season${r.temporada === "2020/21" ? " hl" : ""}">
+        <div class="yr">${esc(r.temporada)}<small>${ongoing ? "En curso" : r.temporada === "2020/21" ? "Sin público" : r.formato === "LIGA" ? "Liga" : "Grupos"}</small></div>
+        <div class="champ">${ongoing
+          ? `<span class="muted">Temporada en curso · ${r.partidos} partidos jugados</span>`
+          : `${crest(c, "sm")}<span><b>${esc(c.corto)}</b><small>Campeón · finalista: ${esc(f?.corto ?? "—")}${how[r.final_definida_por] ? ` · ${how[r.final_definida_por]}` : ""}</small></span>`}</div>
+        <div class="lev">
+          <div class="values"><span>L ${pct(r.pct_local, 1)}</span><span>E ${pct(r.pct_empate, 1)}</span><span>V ${pct(r.pct_visita, 1)}</span></div>
+          <div class="bar" role="img" aria-label="${esc(r.temporada)}: local ${pct(r.pct_local, 1)}, empate ${pct(r.pct_empate, 1)}, visita ${pct(r.pct_visita, 1)}">
+            <span class="l" style="flex:${Number(r.pct_local)}"></span><span class="e" style="flex:${Number(r.pct_empate)}"></span><span class="v" style="flex:${Number(r.pct_visita)}"></span>
+          </div>
+        </div>
+        <div class="goals">${num(r.goles_por_partido, 2)}<small>goles por partido</small></div>
+      </div>`;
+  }
+  $("history").innerHTML = `
+    <div class="insights">${insights.join("")}</div>
+    <ul class="legend" aria-label="Leyenda"><li><span class="sw l"></span>Local</li><li><span class="sw e"></span>Empate</li><li><span class="sw v"></span>Visita</li></ul>
+    <div class="panel"><div class="seasons">${list}</div></div>
+    <p class="note">Todas las rondas, resultado a los 90 minutos. Las barras usan la misma escala (100 %) en todas las temporadas.</p>`;
+}
+
+run("matches", loadPronosticos);
+run("standings", loadTabla);
+run("eval", loadEval);
+run("history", loadHistory);
+
+let rt;
+window.addEventListener("resize", () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => { if (perf.length && $("season-chart")) renderSeasonChart(); }, 200);
+});
+</script>
+</body>
+</html>
