@@ -1,0 +1,27 @@
+# Pronósticos de Niké: se cargan al hacer push de un CSV en entradas/nike/.
+# La hora del commit es la prueba de que el pronóstico es previo al partido.
+# Idempotente: las filas ya cargadas no se tocan.
+name: carga-nike-pronosticos
+
+on:
+  push:
+    branches: [main]
+    paths: ["entradas/nike/*.csv"]
+  workflow_dispatch:
+
+jobs:
+  cargar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Validar y cargar pronósticos de Niké
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          python src/ingesta/nike_pronosticos.py
