@@ -87,7 +87,7 @@ def main():
     temporadas = sorted({f["id_temporada"] for f in filas})
     print(f"{'modelo':<13} {'temporada':>9} {'n':>4} {'log_loss':>9} {'brier':>7} {'rps':>7} {'acierto':>8}")
     salida = {}
-    for m in ("FRECUENCIA", "ELO_UCL", "DIXON_COLES", "MERCADO_PROP", "MERCADO_SHIN"):
+    for m in ("FRECUENCIA", "ELO_UCL", "DIXON_COLES", "DIXON_COLES_COEF", "MERCADO_PROP", "MERCADO_SHIN"):
         salida[m] = {}
         for t in temporadas + [None]:
             r = metricas([f for f in filas if f["modelo"] == m and (t is None or f["id_temporada"] == t)])
@@ -106,7 +106,7 @@ def main():
     mercado = ll_por_partido("MERCADO_SHIN")
     rng = np.random.default_rng(42)
     print("\nDiferencia de log loss vs MERCADO_SHIN (negativo = el modelo es mejor):")
-    for m in ("ELO_UCL", "DIXON_COLES", "MERCADO_PROP"):
+    for m in ("ELO_UCL", "DIXON_COLES", "DIXON_COLES_COEF", "MERCADO_PROP"):
         mod = ll_por_partido(m)
         d = np.array([mod[k] - mercado[k] for k in mercado])
         bs = [d[rng.integers(0, len(d), len(d))].mean() for _ in range(5000)]

@@ -8,9 +8,11 @@ Modelos:
   - FRECUENCIA : proporción histórica de L / E / V (baseline ingenuo).
   - ELO_UCL    : Elo calculado solo con partidos de Champions; probabilidades
                  con un logit ordenado sobre la diferencia de Elo.
-  - DIXON_COLES: src/modelo/dixon_coles.py.
+  - DIXON_COLES: src/modelo/dixon_coles.py (v1, solo partidos UCL).
+  - DIXON_COLES_COEF: v2, ataque/defensa parten del coeficiente UEFA del club
+                 (src/modelo/coeficientes.py); corrige a los debutantes.
 
-Hiperparámetros de Dixon-Coles (vida media, regularización) y de Elo (K) se
+Hiperparámetros de cada Dixon-Coles (vida media, regularización) y de Elo (K) se
 eligen con la temporada de VALIDACIÓN; las de PRUEBA no se tocan hasta el final.
 
 Métricas: log loss, Brier multiclase (0 = perfecto, 2 = peor), RPS y acierto.
@@ -36,6 +38,7 @@ from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
 
+from coeficientes import anotar, leer_coeficientes
 from dixon_coles import DixonColes
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -66,6 +69,7 @@ def leer_partidos():
                     "goles_visita_90": int(r["goles_visita_90"]) if jugado else None,
                 })
     partidos.sort(key=lambda p: (p["fecha"], p["local"]))
+    anotar(partidos, leer_coeficientes())
     return partidos
 
 
@@ -156,11 +160,13 @@ class EloUCL:
 # -----------------------------------------------------------------------------
 # Walk-forward
 # -----------------------------------------------------------------------------
-def walk_forward(partidos, temporadas, vida_media, reg, k_elo):
+def walk_forward(partidos, temporadas, vida_media, reg, k_elo, vida_coef=None, reg_coef=None):
+    """Sin vida_coef / reg_coef no corre DIXON_COLES_COEF."""
     jugados = [p for p in partidos if p["jugado"]]
     objetivo = [p for p in jugados if p["id_temporada"] in temporadas]
     fechas = sorted({p["fecha"] for p in objetivo})
-    dc = DixonColes(vida_media_dias=vida_media, reg=reg)
+    dc = DixonColes(vida_media_dias=vida_media, reg=reg, usa_coef=False)
+    dc2 = DixonColes(vida_media_dias=vida_coef, reg=reg_coef) if vida_coef else None
     elo = EloUCL(k=k_elo)
     filas, i_elo, temporada_logit = [], 0, None
 
@@ -174,6 +180,8 @@ def walk_forward(partidos, temporadas, vida_media, reg, k_elo):
             elo.ajustar_logit()
             temporada_logit = del_dia[0]["id_temporada"]
         dc.ajustar(entreno, fecha)
+        if dc2:
+            dc2.ajustar(entreno, fecha)
         freq = prob_frecuencia(entreno)
         for p in del_dia:
             base = {"id_temporada": p["id_temporada"], "id_ronda": p["id_ronda"], "fecha": p["fecha"].isoformat(),
@@ -183,7 +191,10 @@ def walk_forward(partidos, temporadas, vida_media, reg, k_elo):
             filas.append({**base, "modelo": "FRECUENCIA", **freq})
             filas.append({**base, "modelo": "ELO_UCL", **elo.predecir(p)})
             filas.append({**base, "modelo": "DIXON_COLES", **dc.predecir(p["local"], p["visita"], p["es_neutral"])})
-    return filas, dc
+            if dc2:
+                filas.append({**base, "modelo": "DIXON_COLES_COEF",
+                              **dc2.predecir(p["local"], p["visita"], p["es_neutral"], p["x_local"], p["x_visita"])})
+    return filas, dc2 or dc
 
 
 def resumen(filas, modelo, temporadas=None):
@@ -212,29 +223,41 @@ def main():
             filas, _ = walk_forward(partidos, validacion, vm, rg, ks[0])
             grilla.append((resumen(filas, "DIXON_COLES")["log_loss"], vm, rg))
     _, vida, reg = min(grilla)
+    regs_coef = [1.0, 4.0, 16.0] if args.rapido else [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+    grilla_coef = []
+    for vm in vidas:
+        for rg in regs_coef:
+            filas, _ = walk_forward(partidos, validacion, vida, reg, ks[0], vm, rg)
+            grilla_coef.append((resumen(filas, "DIXON_COLES_COEF")["log_loss"], vm, rg))
+    _, vida_coef, reg_coef = min(grilla_coef)
     grilla_k = []
     for k in ks:
         filas, _ = walk_forward(partidos, validacion, vida, reg, k)
         grilla_k.append((resumen(filas, "ELO_UCL")["log_loss"], k))
     _, k_elo = min(grilla_k)
-    print(f"Validación {sorted(validacion)}: Dixon-Coles vida media {vida} d, reg {reg} · Elo K {k_elo}")
-    for ll, vm, rg in sorted(grilla)[:5]:
-        print(f"   DC vida {vm:>5} reg {rg:>4}: log loss {ll}")
+    print(f"Validación {sorted(validacion)}: Dixon-Coles vida media {vida} d, reg {reg} · "
+          f"DC coef vida media {vida_coef} d, reg {reg_coef} · Elo K {k_elo}")
+    for nombre, g in (("DC", grilla), ("DC coef", grilla_coef)):
+        for ll, vm, rg in sorted(g)[:5]:
+            print(f"   {nombre:<7} vida {vm:>5} reg {rg:>4}: log loss {ll}")
 
     # 2) Prueba (una sola corrida con los hiperparámetros elegidos)
-    filas, dc = walk_forward(partidos, set(prueba), vida, reg, k_elo)
+    filas, dc = walk_forward(partidos, set(prueba), vida, reg, k_elo, vida_coef, reg_coef)
     salida = {"validacion": sorted(validacion), "prueba": prueba,
-              "hiperparametros": {"vida_media_dias": vida, "reg": reg, "k_elo": k_elo},
-              "rho": round(dc.rho, 4), "ventaja_local": round(dc.ventaja_local, 4), "modelos": {}}
-    print(f"\nPrueba {prueba}  (ρ = {dc.rho:.3f}, ventaja local ×{dc.ventaja_local:.3f} en goles)")
-    print(f"{'modelo':<12} {'temporada':>9} {'n':>4} {'log_loss':>9} {'brier':>7} {'rps':>7} {'acierto':>8}")
-    for m in ("FRECUENCIA", "ELO_UCL", "DIXON_COLES"):
+              "hiperparametros": {"vida_media_dias": vida, "reg": reg, "k_elo": k_elo,
+                                  "vida_media_dias_coef": vida_coef, "reg_coef": reg_coef},
+              "rho": round(dc.rho, 4), "ventaja_local": round(dc.ventaja_local, 4),
+              "betas_coef": [round(b, 4) for b in dc.betas], "modelos": {}}
+    print(f"\nPrueba {prueba}  (DC coef: ρ = {dc.rho:.3f}, ventaja local ×{dc.ventaja_local:.3f} en goles, "
+          f"βa = {dc.betas[0]:.3f}, βd = {dc.betas[1]:.3f})")
+    print(f"{'modelo':<16} {'temporada':>9} {'n':>4} {'log_loss':>9} {'brier':>7} {'rps':>7} {'acierto':>8}")
+    for m in ("FRECUENCIA", "ELO_UCL", "DIXON_COLES", "DIXON_COLES_COEF"):
         salida["modelos"][m] = {"total": resumen(filas, m)}
         for t in prueba + [None]:
             r = resumen(filas, m, None if t is None else {t})
             if t is not None:
                 salida["modelos"][m][str(t)] = r
-            print(f"{m:<12} {('todas' if t is None else t):>9} {r['n']:>4} {r['log_loss']:>9} "
+            print(f"{m:<16} {('todas' if t is None else t):>9} {r['n']:>4} {r['log_loss']:>9} "
                   f"{r['brier']:>7} {r['rps']:>7} {r['acierto']:>8}")
 
     destino = RAIZ / "data" / "gold"

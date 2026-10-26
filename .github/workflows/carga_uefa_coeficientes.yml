@@ -1,0 +1,33 @@
+# Coeficiente de club UEFA (ranking para el sorteo de cada temporada). Cambia una
+# vez al año: correr a mano después del cierre de temporada (julio). Idempotente.
+name: carga-uefa-coeficientes
+
+on:
+  workflow_dispatch:
+    inputs:
+      temporadas:
+        description: "Años de inicio separados por coma (vacío = 2015..2026)"
+        required: false
+
+jobs:
+  cargar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Cargar coeficientes UEFA
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          ARGS=""
+          if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
+          python src/ingesta/uefa_coeficientes.py $ARGS
+      - name: Publicar pronósticos (Dixon-Coles v2 usa los coeficientes)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python src/modelo/publicar_pronosticos.py

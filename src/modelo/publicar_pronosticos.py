@@ -1,5 +1,8 @@
 """
-Publica pronósticos 1X2 en gold.f_pronostico (Dixon-Coles v1 y Elo UCL v1).
+Publica pronósticos 1X2 en gold.f_pronostico (Dixon-Coles v1 y v2, Elo UCL v1).
+
+Dixon-Coles v2 parte del coeficiente UEFA del club (gold.f_coeficiente_uefa,
+src/ingesta/uefa_coeficientes.py); sin coeficientes cargados equivale a la v1.
 
   - Partidos JUGADOS desde --desde-temporada: pronóstico de BACKTEST
     (walk-forward: entrenado solo con partidos anteriores a su fecha).
@@ -29,17 +32,22 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from backtest import EloUCL, leer_partidos, metricas, walk_forward
+from coeficientes import anotar, leer_coeficientes
 from dixon_coles import DixonColes
 
 RAIZ = Path(__file__).resolve().parents[2]
 
 # Elegidos con la temporada de validación 2022-23 (src/modelo/backtest.py)
 VIDA_MEDIA_DIAS, REG, K_ELO = 365, 1.0, 30
+VIDA_MEDIA_DIAS_COEF, REG_COEF = 365, 2.0
 
 MODELOS = {
     "DIXON_COLES": ("Dixon-Coles", "v1", "DIXON_COLES",
                     "Poisson bivariado con corrección τ (ρ), ataque/defensa por club con L2 y "
                     "ponderación temporal; solo partidos UCL a los 90'."),
+    "DIXON_COLES_COEF": ("Dixon-Coles", "v2", "DIXON_COLES",
+                         "Dixon-Coles v1 + coeficiente de club UEFA: ataque/defensa = β·log(coeficiente) "
+                         "+ desvío del club con L2; un debutante parte de lo que predice su coeficiente."),
     "ELO_UCL": ("Elo UCL", "v1", "ELO",
                 "Elo solo con partidos UCL (margen de goles, regresión entre temporadas) + "
                 "logit ordenado sobre la diferencia de Elo."),
@@ -62,6 +70,7 @@ def leer_postgres(cx):
         "goles_local_90": r[8], "goles_visita_90": r[9],
     } for r in filas if r[7] in ("JUGADO", "PROGRAMADO")]
     partidos.sort(key=lambda p: (p["fecha"], p["local"]))
+    anotar(partidos, leer_coeficientes(cx))
     return partidos
 
 
@@ -70,7 +79,8 @@ def pronosticos(partidos, desde_temporada, en_vivo):
     temporadas = sorted({p["id_temporada"] for p in jugados if p["id_temporada"] >= desde_temporada})
 
     # 1) Backtest walk-forward
-    filas_bt, _ = walk_forward(partidos, set(temporadas), VIDA_MEDIA_DIAS, REG, K_ELO)
+    filas_bt, _ = walk_forward(partidos, set(temporadas), VIDA_MEDIA_DIAS, REG, K_ELO,
+                               VIDA_MEDIA_DIAS_COEF, REG_COEF)
     salida = []
     for f in filas_bt:
         if f["modelo"] not in MODELOS:
@@ -82,7 +92,8 @@ def pronosticos(partidos, desde_temporada, en_vivo):
     programados = [p for p in partidos if not p["jugado"]]
     if programados and en_vivo:
         hoy = max(p["fecha"] for p in jugados)
-        dc = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS, reg=REG).ajustar(jugados, hoy)
+        dc = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS, reg=REG, usa_coef=False).ajustar(jugados, hoy)
+        dc2 = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS_COEF, reg=REG_COEF).ajustar(jugados, hoy)
         elo = EloUCL(k=K_ELO)
         for p in jugados:
             elo.actualizar(p)
@@ -91,6 +102,8 @@ def pronosticos(partidos, desde_temporada, en_vivo):
             base = {"id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
                     "local": p["local"], "visita": p["visita"], "es_backtest": False, "datos_hasta": hoy.isoformat()}
             salida.append({**base, "modelo": "DIXON_COLES", **dc.predecir(p["local"], p["visita"], p["es_neutral"])})
+            salida.append({**base, "modelo": "DIXON_COLES_COEF",
+                           **dc2.predecir(p["local"], p["visita"], p["es_neutral"], p["x_local"], p["x_visita"])})
             salida.append({**base, "modelo": "ELO_UCL", **elo.predecir(p)})
 
     # Métricas del período de prueba (temporadas del backtest ya terminadas)
@@ -117,7 +130,9 @@ def escribir_postgres(cx, salida, met, partidos):
                RETURNING id_modelo""",
             (nombre, version, algoritmo, "2015-16 en adelante (walk-forward)",
              json.dumps({**met[clave], "hiperparametros": {"vida_media_dias": VIDA_MEDIA_DIAS, "reg": REG,
-                                                            "k_elo": K_ELO}}), descripcion)).fetchone()[0]
+                                                            "k_elo": K_ELO,
+                                                            "vida_media_dias_coef": VIDA_MEDIA_DIAS_COEF,
+                                                            "reg_coef": REG_COEF}}), descripcion)).fetchone()[0]
 
     sql = f"""
         INSERT INTO gold.f_pronostico (id_partido, id_modelo, generado_en, {", ".join(COLUMNAS)}, es_backtest, datos_hasta)
