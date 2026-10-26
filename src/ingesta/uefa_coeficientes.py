@@ -15,6 +15,8 @@ Pasos:
   1. Guarda cada ranking crudo en bronze.ingesta.
   2. Resuelve los clubes con seeds/equipos_uefa.csv (por id de UEFA).
   3. Upsert en gold.d_equipo_alias (fuente 'uefa') y gold.f_coeficiente_uefa.
+  4. Actualiza gold.d_equipo.codigo y nombre_corto (teamCode y displayNameShort
+     del ranking más reciente en que aparece el club), para el dashboard.
 
 Uso:
     py src/ingesta/uefa_coeficientes.py                         # 2015 .. 2026
@@ -73,6 +75,15 @@ def coeficientes(id_temporada, ranking, equipos):
     return filas
 
 
+def identidades(crudos):
+    """{uefa_id: (codigo, nombre_corto)} del ranking más reciente en que aparece cada club."""
+    ident = {}
+    for anio in sorted(crudos):
+        for m in crudos[anio][1]["data"]["members"]:
+            ident[m["member"]["id"]] = (m["member"].get("teamCode"), m["member"].get("displayNameShort"))
+    return ident
+
+
 def guardar_local(filas):
     destino = RAIZ / "data" / "silver"
     destino.mkdir(parents=True, exist_ok=True)
@@ -83,6 +94,7 @@ def guardar_local(filas):
 
 
 def cargar_postgres(url, crudos, filas, equipos):
+    ident = identidades(crudos)
     import psycopg
     with psycopg.connect(url) as cx:
         for anio, (status, payload) in crudos.items():
@@ -102,6 +114,9 @@ def cargar_postgres(url, crudos, filas, equipos):
                        ON CONFLICT (id_fuente, alias) DO UPDATE SET
                            id_externo = EXCLUDED.id_externo, id_equipo = EXCLUDED.id_equipo, validado = TRUE""",
                     (e["uefa_nombre"], e["uefa_id"], id_equipo[e["nombre_canonico"]]))
+                if e["uefa_id"] in ident:
+                    cx.execute("UPDATE gold.d_equipo SET codigo = %s, nombre_corto = %s WHERE id_equipo = %s",
+                               (*ident[e["uefa_id"]], id_equipo[e["nombre_canonico"]]))
 
         n = 0
         with cx.cursor() as cur:
@@ -141,6 +156,14 @@ def main():
               f"{len(filas_t)} del seed ({con_piso} con piso de asociación)")
         filas += filas_t
         time.sleep(PAUSA_S)
+
+    # Ranking en curso: SOLO para código y nombre corto de los debutantes (p. ej.
+    # Como 1907 no aparece hasta 2027). Sus puntos no se usan como coeficiente.
+    siguiente = max(crudos) + 1
+    try:
+        crudos[siguiente] = http_json(URL.format(anio=siguiente))
+    except Exception as e:
+        print(f"{siguiente}: ranking en curso no disponible ({e}); se omite")
 
     url_bd = os.getenv("DATABASE_URL")
     if url_bd:
