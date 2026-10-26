@@ -8,6 +8,7 @@
 <meta property="og:title" content="UCL Data Platform · El fútbol tiene emoción. También tiene datos.">
 <meta property="og:description" content="Dos modelos estadísticos, sus probabilidades para cada partido de la Champions y cómo se evalúan.">
 <meta property="og:type" content="website">
+<link rel="alternate" hreflang="en" href="en/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23152445'/%3E%3Ctext x='16' y='23' font-family='Segoe UI,sans-serif' font-size='20' font-weight='800' fill='%23f4f6ff' text-anchor='middle'%3EU%3C/text%3E%3C/svg%3E">
 <script>
   // Apply the saved theme before first paint (no flash)
@@ -365,6 +366,7 @@
 <header class="wrap topbar">
   <div class="brand"><span class="brand-mark" aria-hidden="true">U</span><span>UCL <span class="muted">DATA PLATFORM</span></span></div>
   <div class="top-actions">
+    <a class="repo" href="en/" hreflang="en" lang="en" aria-label="Read in English">EN</a>
     <a class="repo" href="https://github.com/choquerutheva-maker/ucl-data-platform" rel="noopener">GitHub ↗</a>
     <label><span class="sr-only">Tema</span>
       <select id="theme">
@@ -491,19 +493,19 @@
         <span class="step">01 / PREPARAR</span>
         <h3>Datos con fecha de corte</h3>
         <p>Resultados, calendario y coeficientes UEFA se cargan cada día con GitHub Actions en un modelo medallion (bronze → silver → gold) sobre PostgreSQL. Cada pronóstico indica hasta qué fecha llegan los datos que usó.</p>
-        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#arquitectura" rel="noopener">Arquitectura ↗</a>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform/blob/main/README.es.md#arquitectura" rel="noopener">Arquitectura ↗</a>
       </article>
       <article>
         <span class="step">02 / ESTIMAR</span>
         <h3>Dos enfoques distintos</h3>
         <p>Dixon-Coles modela los goles de cada equipo; Elo UCL resume la fuerza relativa en una calificación. Ambos dan probabilidades de local, empate y visita; sus diferencias se muestran como información, no como recomendación.</p>
-        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#modelos" rel="noopener">Modelos ↗</a>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform/blob/main/README.es.md#modelos" rel="noopener">Modelos ↗</a>
       </article>
       <article>
         <span class="step">03 / COMPROBAR</span>
         <h3>Evaluar después del partido</h3>
         <p>El pronóstico previo se contrasta con el resultado a los 90 minutos. Backtest y evaluación en vivo se muestran por separado, con su muestra y su métrica.</p>
-        <a href="https://github.com/choquerutheva-maker/ucl-data-platform#hallazgos" rel="noopener">Resultados ↗</a>
+        <a href="https://github.com/choquerutheva-maker/ucl-data-platform/blob/main/README.es.md#hallazgos" rel="noopener">Resultados ↗</a>
       </article>
     </div>
   </section>
