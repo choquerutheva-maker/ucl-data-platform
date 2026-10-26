@@ -36,7 +36,7 @@ jobs:
           ARGS=""
           if [ -n "${{ inputs.temporadas }}" ]; then ARGS="--temporadas ${{ inputs.temporadas }}"; fi
           python src/transformacion/tabla_posiciones.py $ARGS
-      - name: Publicar pronósticos (backtest; en vivo apagado en v1)
+      - name: Publicar pronósticos (backtest + en vivo de Dixon-Coles v2 y Elo)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python src/modelo/publicar_pronosticos.py
+        run: python src/modelo/publicar_pronosticos.py --en-vivo

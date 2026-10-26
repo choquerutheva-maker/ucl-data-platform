@@ -6,9 +6,9 @@ src/ingesta/uefa_coeficientes.py); sin coeficientes cargados equivale a la v1.
 
   - Partidos JUGADOS desde --desde-temporada: pronóstico de BACKTEST
     (walk-forward: entrenado solo con partidos anteriores a su fecha).
-  - Partidos PROGRAMADOS (solo con --en-vivo): pronóstico EN VIVO, entrenado
-    con todo lo jugado hasta hoy. Se recalcula en cada corrida mientras el partido no empiece;
-    una vez jugado, el pronóstico en vivo se conserva tal cual (el backtest
+  - Partidos PROGRAMADOS (solo con --en-vivo): pronóstico EN VIVO de los
+    modelos de MODELOS_EN_VIVO, entrenado con todo lo jugado hasta hoy. Se
+    recalcula en cada corrida mientras el partido no empiece; una vez jugado, el pronóstico en vivo se conserva tal cual (el backtest
     nunca lo reemplaza).
 
 d_modelo guarda los hiperparámetros y las métricas del período de prueba
@@ -52,6 +52,9 @@ MODELOS = {
                 "Elo solo con partidos UCL (margen de goles, regresión entre temporadas) + "
                 "logit ordenado sobre la diferencia de Elo."),
 }
+# En vivo desde la J4 2026-27: v2 y Elo lado a lado con el mercado
+# (gold.vw_pronostico_vs_mercado). La v1 exageraba con los debutantes: solo backtest.
+MODELOS_EN_VIVO = {"DIXON_COLES_COEF", "ELO_UCL"}
 COLUMNAS = ["prob_local", "prob_empate", "prob_visita", "goles_esp_local", "goles_esp_visita", "prob_over_2_5"]
 
 
@@ -92,19 +95,21 @@ def pronosticos(partidos, desde_temporada, en_vivo):
     programados = [p for p in partidos if not p["jugado"]]
     if programados and en_vivo:
         hoy = max(p["fecha"] for p in jugados)
-        dc = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS, reg=REG, usa_coef=False).ajustar(jugados, hoy)
         dc2 = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS_COEF, reg=REG_COEF).ajustar(jugados, hoy)
         elo = EloUCL(k=K_ELO)
         for p in jugados:
             elo.actualizar(p)
         elo.ajustar_logit()
+        predictores = {
+            "DIXON_COLES_COEF": lambda p: dc2.predecir(p["local"], p["visita"], p["es_neutral"],
+                                                       p["x_local"], p["x_visita"]),
+            "ELO_UCL": elo.predecir,
+        }
         for p in programados:
             base = {"id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
                     "local": p["local"], "visita": p["visita"], "es_backtest": False, "datos_hasta": hoy.isoformat()}
-            salida.append({**base, "modelo": "DIXON_COLES", **dc.predecir(p["local"], p["visita"], p["es_neutral"])})
-            salida.append({**base, "modelo": "DIXON_COLES_COEF",
-                           **dc2.predecir(p["local"], p["visita"], p["es_neutral"], p["x_local"], p["x_visita"])})
-            salida.append({**base, "modelo": "ELO_UCL", **elo.predecir(p)})
+            for m in sorted(MODELOS_EN_VIVO):
+                salida.append({**base, "modelo": m, **predictores[m](p)})
 
     # Métricas del período de prueba (temporadas del backtest ya terminadas)
     en_curso = {p["id_temporada"] for p in programados}
@@ -154,8 +159,6 @@ def escribir_postgres(cx, salida, met, partidos):
 def main():
     ap = argparse.ArgumentParser(description="Publica pronósticos en gold.f_pronostico")
     ap.add_argument("--desde-temporada", type=int, default=2023)
-    # Apagado en v1: frente al mercado (jornada 4 de 2026-27) exagera con los clubes
-    # debutantes (Como, Fenerbahçe, LASK, Viking, Sabah). Se activa cuando se corrija.
     ap.add_argument("--en-vivo", action="store_true", help="emitir también pronósticos de partidos programados")
     args = ap.parse_args()
 

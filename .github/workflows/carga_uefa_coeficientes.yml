@@ -30,4 +30,4 @@ jobs:
       - name: Publicar pronósticos (Dixon-Coles v2 usa los coeficientes)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python src/modelo/publicar_pronosticos.py
+        run: python src/modelo/publicar_pronosticos.py --en-vivo
