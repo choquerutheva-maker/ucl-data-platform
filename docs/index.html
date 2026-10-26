@@ -172,7 +172,10 @@
   .bar span { display: block; height: 100%; min-width: 2px; }
   .bar span:first-child { border-radius: 5px 0 0 5px; }
   .bar span:last-child { border-radius: 0 5px 5px 0; }
-  .l { background: var(--local); } .e { background: var(--draw); } .v { background: var(--away); }
+  /* Outcome colors scoped to bars and swatches (".l" also left-aligns table cells) */
+  .bar .l, .sw.l { background: var(--local); }
+  .bar .e, .sw.e { background: var(--draw); }
+  .bar .v, .sw.v { background: var(--away); }
   .verdict { font-size: 13px; font-weight: 650; margin-top: 6px; }
   .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); } .verdict.na { color: var(--muted); font-weight: 500; }
   .disagree { margin: 16px 0 0; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
