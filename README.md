@@ -101,11 +101,16 @@ pronóstico en vivo no se modifica después del inicio.
 
 ## Hallazgos
 
-- **Ventaja de local sin público.** En 2020-21, con estadios vacíos, el local ganó
-  el 41,1 % de los partidos y la visita el 39,5 %, casi parejo (n = 124; la
-  diferencia con otras temporadas no es significativa).
-- **Menos empates con la fase de liga.** Desde 2024-25 los empates bajaron del
-  21 % al 16 % (p ≈ 0,02) y se marcan 3,36 goles por partido.
+- **Local y visita, casi parejos en 2020-21.** En la temporada de estadios vacíos
+  el local ganó el 40,8 % de los partidos y la visita el 40,0 % (n = 125, todas
+  las rondas), frente a 46,7 % y 31,8 % en el resto de 2015-16 a 2023-24
+  (n = 994). Es una
+  sola temporada: coincide con la ausencia de público, pero no prueba que esa
+  sea la causa.
+- **Menos empates desde el nuevo formato.** Los empates bajaron del 21,3 %
+  (2015-16 a 2023-24, n = 1.119) al 16,1 % (2024-25 y 2025-26, n = 378;
+  p ≈ 0,03), y los goles por partido subieron de 3,00 a 3,35. Todas las rondas a
+  los 90'; no incluye 2026-27, que está en curso.
 
 ## Limitaciones y próximos pasos
 

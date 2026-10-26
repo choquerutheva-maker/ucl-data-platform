@@ -8,7 +8,8 @@ src/ingesta/uefa_coeficientes.py); sin coeficientes cargados equivale a la v1.
     (walk-forward: entrenado solo con partidos anteriores a su fecha).
   - Partidos PROGRAMADOS (solo con --en-vivo): pronóstico EN VIVO de los
     modelos de MODELOS_EN_VIVO, entrenado con todo lo jugado hasta hoy. Se
-    recalcula en cada corrida mientras el partido no empiece; una vez jugado, el pronóstico en vivo se conserva tal cual (el backtest
+    recalcula en cada corrida mientras el partido no empiece (nunca se emite
+    para un partido con inicio_utc ya pasado, aunque siga PROGRAMADO); una vez jugado, el pronóstico en vivo se conserva tal cual (el backtest
     nunca lo reemplaza).
 
 d_modelo guarda los hiperparámetros y las métricas del período de prueba
@@ -62,7 +63,7 @@ COLUMNAS = ["prob_local", "prob_empate", "prob_visita", "goles_esp_local", "gole
 def leer_postgres(cx):
     filas = cx.execute("""
         SELECT p.id_partido, p.id_temporada, p.id_ronda, p.fecha, l.nombre_canonico, v.nombre_canonico,
-               p.es_neutral, p.estado, p.goles_local_90, p.goles_visita_90
+               p.es_neutral, p.estado, p.goles_local_90, p.goles_visita_90, p.inicio_utc
         FROM gold.f_partido p
         JOIN gold.d_equipo l ON l.id_equipo = p.id_equipo_local
         JOIN gold.d_equipo v ON v.id_equipo = p.id_equipo_visita""").fetchall()
@@ -70,7 +71,7 @@ def leer_postgres(cx):
         "id_partido": r[0], "id_temporada": r[1], "id_ronda": r[2],
         "fecha": r[3] if isinstance(r[3], date) else date.fromisoformat(str(r[3])),
         "local": r[4], "visita": r[5], "es_neutral": r[6], "jugado": r[7] == "JUGADO",
-        "goles_local_90": r[8], "goles_visita_90": r[9],
+        "goles_local_90": r[8], "goles_visita_90": r[9], "inicio_utc": r[10],
     } for r in filas if r[7] in ("JUGADO", "PROGRAMADO")]
     partidos.sort(key=lambda p: (p["fecha"], p["local"]))
     anotar(partidos, leer_coeficientes(cx))
@@ -93,7 +94,10 @@ def pronosticos(partidos, desde_temporada, en_vivo):
 
     # 2) En vivo: programados, entrenando con todo lo jugado
     programados = [p for p in partidos if not p["jugado"]]
-    if programados and en_vivo:
+    ahora = datetime.now(timezone.utc)
+    por_empezar = [p for p in programados
+                   if (p["inicio_utc"] > ahora if p.get("inicio_utc") else p["fecha"] >= ahora.date())]
+    if por_empezar and en_vivo:
         hoy = max(p["fecha"] for p in jugados)
         dc2 = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS_COEF, reg=REG_COEF).ajustar(jugados, hoy)
         elo = EloUCL(k=K_ELO)
@@ -105,7 +109,7 @@ def pronosticos(partidos, desde_temporada, en_vivo):
                                                        p["x_local"], p["x_visita"]),
             "ELO_UCL": elo.predecir,
         }
-        for p in programados:
+        for p in por_empezar:
             base = {"id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
                     "local": p["local"], "visita": p["visita"], "es_backtest": False, "datos_hasta": hoy.isoformat()}
             for m in sorted(MODELOS_EN_VIVO):
