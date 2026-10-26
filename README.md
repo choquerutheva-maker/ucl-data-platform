@@ -1,27 +1,32 @@
 # UCL Data Platform
 
-Plataforma de datos de la UEFA Champions League, de punta a punta:
+🇪🇸 [Leer en español](README.es.md)
 
-- **Ingesta automatizada** de resultados, calendario, cuotas y coeficientes UEFA
-  con Python y GitHub Actions.
-- **Arquitectura medallion** (bronze → silver → gold) sobre PostgreSQL en Supabase,
-  con un modelo estrella en gold.
-- **Modelos de pronóstico 1X2** (Dixon-Coles y Elo) evaluados *walk-forward* sin
-  leakage y comparados contra el mercado de apuestas.
-- **Pronósticos en vivo** desde la jornada 4 de 2026-27, publicados antes de cada
-  partido junto a la probabilidad implícita del mercado.
+📊 **Dashboard:** https://choquerutheva-maker.github.io/ucl-data-platform/
 
-Cobertura: temporadas 2015-16 a 2026-27 (más de 1.500 partidos, 106 clubes).
+An end-to-end data platform for the UEFA Champions League:
 
-## Arquitectura
+- **Automated ingestion** of results, fixtures, betting odds and UEFA coefficients
+  with Python and GitHub Actions.
+- **Medallion architecture** (bronze → silver → gold) on PostgreSQL (Supabase),
+  with a star schema in gold.
+- **1X2 forecasting models** (Dixon-Coles and Elo) evaluated with a walk-forward
+  backtest (no leakage) and benchmarked against the betting market.
+- **Live forecasts** since matchday 4 of 2026-27, published before every match and
+  evaluated against the market (aggregates only).
+- **Public dashboard** on GitHub Pages, reading gold with a read-only key.
+
+Coverage: seasons 2015-16 to 2026-27 (1,500+ matches, 106 clubs).
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Fuentes
-        OF[openfootball<br/>histórico 2015-2026]
-        ESPN[ESPN API<br/>calendario, resultados, cuotas]
-        UEFA[UEFA API<br/>coeficiente de club]
-        NK[Niké<br/>CSV en entradas/nike]
+    subgraph Sources
+        OF[openfootball<br/>history 2015-2026]
+        ESPN[ESPN API<br/>fixtures, results, odds]
+        UEFA[UEFA API<br/>club coefficient]
+        NK[Niké<br/>CSV in entradas/nike]
     end
     subgraph GH[GitHub Actions]
         ING[src/ingesta]
@@ -29,9 +34,9 @@ flowchart LR
         MOD[src/modelo]
     end
     subgraph SB[Supabase · PostgreSQL]
-        B[(bronze<br/>payload crudo)]
-        S[(silver<br/>limpio por fuente)]
-        G[(gold<br/>modelo estrella)]
+        B[(bronze<br/>raw payload)]
+        S[(silver<br/>clean, per source)]
+        G[(gold<br/>star schema)]
     end
     OF & ESPN & UEFA & NK --> ING
     ING --> B
@@ -42,107 +47,111 @@ flowchart LR
     G --> D[Dashboard]
 ```
 
-| Capa | Contenido | Acceso |
+| Layer | Content | Access |
 |---|---|---|
-| `bronze` | Respuesta cruda de cada fuente, deduplicada por hash | privado |
-| `silver` | Datos limpios por fuente: cuotas ESPN, probabilidades externas, pronósticos de Niké | privado |
-| `gold` | Modelo estrella: partidos, llaves, tabla de posiciones, coeficientes, modelos y pronósticos | lectura pública (RLS) |
+| `bronze` | Raw response from each source, deduplicated by hash | private |
+| `silver` | Clean data per source: ESPN odds, external probabilities, Niké's forecasts | private |
+| `gold` | Star schema: matches, two-legged ties, standings, coefficients, models and forecasts | public read-only (RLS) |
 
-**Tablas principales de gold**
+**Main gold tables** (names are in Spanish)
 
-- Dimensiones: `d_temporada`, `d_ronda`, `d_equipo` (+ `d_equipo_alias` por fuente),
-  `d_fecha`, `d_estadio`, `d_fuente`, `d_modelo`, `d_regla_desempate`.
-- Hechos: `f_partido` (resultado a los 90', prórroga y penales), `f_serie` (llaves
-  ida y vuelta), `f_tabla_posiciones` (foto por jornada, con los criterios de
-  desempate de cada formato), `f_coeficiente_uefa`, `f_pronostico`.
-- Vistas: `vw_tabla_final`, `vw_evaluacion_pronosticos` y
-  `vw_pronostico_vs_mercado` (privada).
+- Dimensions: `d_temporada` (season), `d_ronda` (round), `d_equipo` (club, plus
+  `d_equipo_alias` per source), `d_fecha` (date), `d_estadio` (stadium),
+  `d_fuente` (source), `d_modelo` (model), `d_regla_desempate` (tie-break rules).
+- Facts: `f_partido` (match: 90' result, extra time and penalties), `f_serie`
+  (two-legged ties), `f_tabla_posiciones` (standings snapshot per matchday, with
+  each format's tie-break criteria), `f_coeficiente_uefa`, `f_pronostico` (forecast).
+- Views: `vw_tabla_final`, `vw_evaluacion_pronosticos`, `vw_dash_*` (dashboard
+  contract) and `vw_pronostico_vs_mercado` (private).
 
-## Procesos automáticos
+## Automated pipelines
 
-| Workflow | Cuándo | Qué hace |
+| Workflow | When | What it does |
 |---|---|---|
-| `captura-cuotas-espn` | cada 3 h | Cuotas 1X2 y Over/Under de las casas que publica ESPN |
-| `carga-espn-resultados` | diario 03:30 UTC | Resultados y calendario → tabla de posiciones → pronósticos (backtest y en vivo) |
-| `carga-uefa-coeficientes` | manual, una vez por temporada | Coeficiente de club UEFA para el sorteo de cada temporada |
-| `carga-nike-pronosticos` | al hacer push de un CSV en `entradas/nike/` | Pronósticos de Niké, con marca de tardío si llegan después del inicio |
-| `carga-openfootball` | manual | Histórico 2015-16 .. 2025-26 |
-| `calcula-tabla-posiciones` | manual | Recalcula la tabla de cualquier temporada |
+| `captura-cuotas-espn` | every 3 h | 1X2 and Over/Under odds from the bookmakers ESPN publishes |
+| `carga-espn-resultados` | daily 03:30 UTC | Results and fixtures → standings → forecasts (backtest and live) |
+| `carga-uefa-coeficientes` | manual, once per season | UEFA club coefficient used for each season's draw |
+| `carga-nike-pronosticos` | on push of a CSV to `entradas/nike/` | Niké's forecasts, flagged as late if they arrive after kickoff |
+| `carga-openfootball` | manual | History 2015-16 .. 2025-26 |
+| `calcula-tabla-posiciones` | manual | Recomputes the standings of any season |
 
-Todos los procesos son idempotentes: se pueden volver a correr sin duplicar datos.
+Every pipeline is idempotent: it can be re-run without duplicating data.
 
-## Modelos
+## Models
 
-| Modelo | Idea |
+| Model | Idea |
 |---|---|
-| **Dixon-Coles v1** | Poisson bivariado con corrección τ para marcadores bajos; ataque y defensa por club con regularización L2 y ponderación temporal (vida media de 365 días). Solo partidos UCL a los 90'. |
-| **Dixon-Coles v2** | v1 + coeficiente de club UEFA: `ataque = β·log(coeficiente) + desvío del club`. Un club que debuta parte de lo que predice su coeficiente y no de un equipo promedio. |
-| **Elo UCL** | Elo con margen de goles y regresión a la media entre temporadas + logit ordenado para pasar de diferencia de Elo a probabilidades 1X2. |
+| **Dixon-Coles v1** | Bivariate Poisson with the τ correction for low scores; attack and defence per club with L2 regularization and time decay (365-day half-life). UCL matches only, 90' results. |
+| **Dixon-Coles v2** | v1 + UEFA club coefficient: `attack = β·log(coefficient) + club deviation`. A debutant club starts from what its coefficient predicts instead of an average team. |
+| **Elo UCL** | Elo with goal margin and regression to the mean between seasons, plus an ordered logit to turn Elo differences into 1X2 probabilities. |
 
-**Evaluación sin leakage.** Backtest *walk-forward*: cada día de partidos se
-pronostica entrenando solo con lo jugado antes. Los hiperparámetros se eligen con
-2022-23 y se prueba en 2023-24 a 2025-26 (503 partidos), que no se tocan hasta el final.
+**No leakage.** Walk-forward backtest: each matchday is forecast training only on
+matches played before it. Hyperparameters are tuned on 2022-23 and the test set is
+2023-24 to 2025-26 (503 matches), untouched until the end.
 
-| Modelo | Log loss | Brier | Acierto |
+| Model | Log loss | Brier | Accuracy |
 |---|---|---|---|
-| Frecuencia histórica (baseline) | 1,022 | 0,617 | 49,7 % |
-| Elo UCL | 0,942 | 0,556 | 57,3 % |
-| Dixon-Coles v1 | 0,935 | 0,551 | 57,9 % |
-| **Dixon-Coles v2** | **0,929** | **0,548** | **58,3 %** |
+| Historical frequency (baseline) | 1.022 | 0.617 | 49.7% |
+| Elo UCL | 0.942 | 0.556 | 57.3% |
+| Dixon-Coles v1 | 0.935 | 0.551 | 57.9% |
+| **Dixon-Coles v2** | **0.929** | **0.548** | **58.3%** |
 
-**Contra el mercado.** Frente a la cuota de cierre de ESPN BET sin margen (método
-de Shin, 297 partidos de 2024-26), el mercado tiene log loss 0,877: v2 queda
-0,050 por encima (IC 95 % +0,017 a +0,081). El mercado incorpora alineaciones y
-forma en la liga local, información que estos modelos todavía no tienen.
+**Against the market.** Compared with ESPN BET closing odds with the margin removed
+(Shin's method, 297 matches from 2024-26), the market scores a log loss of 0.877:
+v2 is 0.050 higher (95% CI +0.017 to +0.081). The market knows line-ups and
+domestic form, information these models don't have yet.
 
-**En vivo.** Desde la J4 de 2026-27 se publican los pronósticos de Dixon-Coles v2
-y Elo antes de cada partido (`gold.f_pronostico`, `es_backtest = FALSE`). Un
-pronóstico en vivo no se modifica después del inicio.
+**Live.** Since matchday 4 of 2026-27, Dixon-Coles v2 and Elo forecasts are
+published before every match (`gold.f_pronostico`, `es_backtest = FALSE`). A live
+forecast is never modified after kickoff.
 
-## Hallazgos
+## Findings
 
-- **Local y visita, casi parejos en 2020-21.** En la temporada de estadios vacíos
-  el local ganó el 40,8 % de los partidos y la visita el 40,0 % (n = 125, todas
-  las rondas), frente a 46,7 % y 31,8 % en el resto de 2015-16 a 2023-24
-  (n = 994). Es una
-  sola temporada: coincide con la ausencia de público, pero no prueba que esa
-  sea la causa.
-- **Menos empates desde el nuevo formato.** Los empates bajaron del 21,3 %
-  (2015-16 a 2023-24, n = 1.119) al 16,1 % (2024-25 y 2025-26, n = 378;
-  p ≈ 0,03), y los goles por partido subieron de 3,00 a 3,35. Todas las rondas a
-  los 90'; no incluye 2026-27, que está en curso.
+- **Home and away almost even in 2020-21.** In the empty-stadium season, home
+  teams won 40.8% of matches and away teams 40.0% (n = 125, all rounds), versus
+  46.7% and 31.8% in the rest of 2015-16 to 2023-24 (n = 994). It is a single
+  season: it coincides with the absence of fans, but does not prove that was the
+  cause.
+- **Fewer draws since the new format.** Draws fell from 21.3% (2015-16 to 2023-24,
+  n = 1,119) to 16.1% (2024-25 and 2025-26, n = 378; p ≈ 0.03), and goals per
+  match rose from 3.00 to 3.35. All rounds, 90' results; 2026-27 is excluded
+  because it is in progress.
 
-## Limitaciones y próximos pasos
+## Limitations and next steps
 
-- Los modelos solo ven partidos de Champions. El próximo paso (v3) es sumar la
-  fuerza en la liga local (ClubElo).
-- En partidos muy desparejos los modelos son más extremos que el mercado; falta
-  calibrar ese tramo.
-- Las cuotas de ESPN no tienen fecha de la línea de cierre: no se puede descartar
-  del todo que alguna sea posterior al inicio.
+- The models only see Champions League matches. The next step (v3) is adding
+  Europe's top 5 leagues, to capture each club's domestic form and forecast those
+  matches too.
+- In very lopsided matches the models are more extreme than the market; that range
+  still needs calibration.
+- ESPN odds don't carry a timestamp for the closing line, so it can't be fully
+  ruled out that some were captured after kickoff.
 
-## Estructura
+## Repository layout
 
-| Ruta | Contenido |
+| Path | Content |
 |---|---|
-| `sql/ddl/` | Scripts de base de datos, en orden numérico |
-| `src/ingesta/` | Captura por fuente (ESPN, openfootball, UEFA, Niké) |
-| `src/transformacion/` | Tabla de posiciones por jornada |
-| `src/modelo/` | Dixon-Coles, Elo, backtest, benchmark contra el mercado y publicación |
-| `seeds/` | Equivalencias de clubes entre fuentes, curadas a mano |
-| `entradas/nike/` | Pronósticos de Niké (formato en su README) |
-| `.github/workflows/` | Procesos programados |
+| `sql/ddl/` | Database migrations, in numeric order |
+| `src/ingesta/` | Ingestion per source (ESPN, openfootball, UEFA, Niké) |
+| `src/transformacion/` | Standings per matchday |
+| `src/modelo/` | Dixon-Coles, Elo, backtest, market benchmark and publishing |
+| `seeds/` | Hand-curated club mappings across sources |
+| `entradas/nike/` | Niké's forecasts (format in its README) |
+| `docs/` | Public dashboard (GitHub Pages) |
+| `.github/workflows/` | Scheduled pipelines |
 
-## Puesta en marcha
+Code identifiers and comments are in Spanish.
 
-1. Crear un proyecto en Supabase y ejecutar `sql/ddl/*.sql` en orden (SQL Editor).
-2. En Supabase: *Settings → API → Exposed schemas*, agregar `gold`.
-3. En GitHub: *Settings → Secrets → Actions*, crear `DATABASE_URL` con la cadena de
-   conexión de Supabase (Session pooler).
-4. Correr a mano `carga-openfootball`, `carga-uefa-coeficientes` y
-   `carga-espn-resultados`; desde ahí todo es automático.
+## Getting started
 
-Sin `DATABASE_URL`, cada script trabaja en local y deja CSV en `data/`:
+1. Create a Supabase project and run `sql/ddl/*.sql` in order (SQL Editor).
+2. In Supabase: *Settings → API → Exposed schemas*, add `gold`.
+3. In GitHub: *Settings → Secrets → Actions*, create `DATABASE_URL` with the
+   Supabase connection string (Session pooler).
+4. Run `carga-openfootball`, `carga-uefa-coeficientes` and `carga-espn-resultados`
+   manually once; from then on everything runs on schedule.
+
+Without `DATABASE_URL`, every script runs locally and writes CSV files to `data/`:
 
 ```
 pip install -r requirements.txt
@@ -151,15 +160,15 @@ python src/ingesta/uefa_coeficientes.py
 python src/modelo/backtest.py
 ```
 
-## Fuentes y atribución
+## Sources and attribution
 
-El catálogo completo, con licencia y atribución, está en `gold.d_fuente`:
-[openfootball](https://github.com/openfootball/football.json) (dominio público),
-ESPN y UEFA (APIs públicas sin términos de redistribución). Los datos de fuentes
-sin licencia de redistribución se usan solo para calcular variables y agregados;
-las cuotas no se republican.
+The full catalogue, with licence and attribution, lives in `gold.d_fuente`:
+[openfootball](https://github.com/openfootball/football.json) (public domain),
+ESPN and UEFA (public APIs without redistribution terms). Data from sources without
+a redistribution licence is only used to compute features and aggregates; betting
+odds are never republished.
 
 ---
 
-Proyecto personal de Ruth Choque, construido con la ayuda de agentes de IA
-(PROMETHEUS para datos y modelos, Niké para el análisis futbolístico).
+Personal project by Ruth Choque, built with the help of AI agents
+(PROMETHEUS for data and models, Niké for football analysis).
