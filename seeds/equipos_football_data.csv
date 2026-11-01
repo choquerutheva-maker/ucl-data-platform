@@ -1,0 +1,181 @@
+liga,fd_nombre,nombre_canonico,pais,origen
+D1,Augsburg,FC Augsburg,GER,nuevo
+D1,Bayern Munich,FC Bayern München,GER,cruce_ucl
+D1,Bielefeld,Arminia Bielefeld,GER,nuevo
+D1,Bochum,VfL Bochum,GER,nuevo
+D1,Braunschweig,Eintracht Braunschweig,GER,nuevo
+D1,Darmstadt,SV Darmstadt 98,GER,nuevo
+D1,Dortmund,Borussia Dortmund,GER,cruce_ucl
+D1,Ein Frankfurt,Eintracht Frankfurt,GER,cruce_ucl
+D1,Elversberg,SV Elversberg,GER,nuevo
+D1,FC Koln,1. FC Köln,GER,nuevo
+D1,Fortuna Dusseldorf,Fortuna Düsseldorf,GER,nuevo
+D1,Freiburg,SC Freiburg,GER,nuevo
+D1,Greuther Furth,SpVgg Greuther Fürth,GER,nuevo
+D1,Hamburg,Hamburger SV,GER,nuevo
+D1,Hannover,Hannover 96,GER,nuevo
+D1,Heidenheim,1. FC Heidenheim,GER,nuevo
+D1,Hertha,Hertha BSC,GER,nuevo
+D1,Hoffenheim,1899 Hoffenheim,GER,cruce_ucl
+D1,Holstein Kiel,Holstein Kiel,GER,nuevo
+D1,Ingolstadt,FC Ingolstadt 04,GER,nuevo
+D1,Leverkusen,Bayer 04 Leverkusen,GER,cruce_ucl
+D1,M'gladbach,Bor. Mönchengladbach,GER,cruce_ucl
+D1,Mainz,1. FSV Mainz 05,GER,nuevo
+D1,Nurnberg,1. FC Nürnberg,GER,nuevo
+D1,Paderborn,SC Paderborn 07,GER,nuevo
+D1,RB Leipzig,RB Leipzig,GER,cruce_ucl
+D1,Schalke 04,FC Schalke 04,GER,cruce_ucl
+D1,St Pauli,FC St. Pauli,GER,nuevo
+D1,Stuttgart,VfB Stuttgart,GER,cruce_ucl
+D1,Union Berlin,1. FC Union Berlin,GER,cruce_ucl
+D1,Werder Bremen,SV Werder Bremen,GER,nuevo
+D1,Wolfsburg,VfL Wolfsburg,GER,cruce_ucl
+E0,Arsenal,Arsenal FC,ENG,cruce_ucl
+E0,Aston Villa,Aston Villa FC,ENG,cruce_ucl
+E0,Bournemouth,AFC Bournemouth,ENG,nuevo
+E0,Brentford,Brentford FC,ENG,nuevo
+E0,Brighton,Brighton & Hove Albion,ENG,nuevo
+E0,Burnley,Burnley FC,ENG,nuevo
+E0,Cardiff,Cardiff City,ENG,nuevo
+E0,Chelsea,Chelsea FC,ENG,cruce_ucl
+E0,Coventry,Coventry City,ENG,nuevo
+E0,Crystal Palace,Crystal Palace,ENG,nuevo
+E0,Everton,Everton FC,ENG,nuevo
+E0,Fulham,Fulham FC,ENG,nuevo
+E0,Huddersfield,Huddersfield Town,ENG,nuevo
+E0,Hull,Hull City,ENG,nuevo
+E0,Ipswich,Ipswich Town,ENG,nuevo
+E0,Leeds,Leeds United,ENG,nuevo
+E0,Leicester,Leicester City,ENG,cruce_ucl
+E0,Liverpool,Liverpool FC,ENG,cruce_ucl
+E0,Luton,Luton Town,ENG,nuevo
+E0,Man City,Manchester City FC,ENG,cruce_ucl
+E0,Man United,Manchester United FC,ENG,cruce_ucl
+E0,Middlesbrough,Middlesbrough FC,ENG,nuevo
+E0,Newcastle,Newcastle United FC,ENG,cruce_ucl
+E0,Norwich,Norwich City,ENG,nuevo
+E0,Nott'm Forest,Nottingham Forest,ENG,nuevo
+E0,QPR,Queens Park Rangers,ENG,nuevo
+E0,Reading,Reading FC,ENG,nuevo
+E0,Sheffield United,Sheffield United,ENG,nuevo
+E0,Southampton,Southampton FC,ENG,nuevo
+E0,Stoke,Stoke City,ENG,nuevo
+E0,Sunderland,Sunderland AFC,ENG,nuevo
+E0,Swansea,Swansea City,ENG,nuevo
+E0,Tottenham,Tottenham Hotspur FC,ENG,cruce_ucl
+E0,Watford,Watford FC,ENG,nuevo
+E0,West Brom,West Bromwich Albion,ENG,nuevo
+E0,West Ham,West Ham United,ENG,nuevo
+E0,Wigan,Wigan Athletic,ENG,nuevo
+E0,Wolves,Wolverhampton Wanderers,ENG,nuevo
+F1,Ajaccio,AC Ajaccio,FRA,nuevo
+F1,Ajaccio GFCO,GFC Ajaccio,FRA,nuevo
+F1,Amiens,Amiens SC,FRA,nuevo
+F1,Angers,Angers SCO,FRA,nuevo
+F1,Auxerre,AJ Auxerre,FRA,nuevo
+F1,Bastia,SC Bastia,FRA,nuevo
+F1,Bordeaux,Girondins de Bordeaux,FRA,nuevo
+F1,Brest,Stade Brestois 29,FRA,cruce_ucl
+F1,Caen,Stade Malherbe Caen,FRA,nuevo
+F1,Clermont,Clermont Foot 63,FRA,nuevo
+F1,Dijon,Dijon FCO,FRA,nuevo
+F1,Evian Thonon Gaillard,Évian Thonon Gaillard,FRA,nuevo
+F1,Guingamp,EA Guingamp,FRA,nuevo
+F1,Le Havre,Le Havre AC,FRA,nuevo
+F1,Le Mans,Le Mans FC,FRA,nuevo
+F1,Lens,Racing Club de Lens,FRA,cruce_ucl
+F1,Lille,Lille OSC,FRA,cruce_ucl
+F1,Lorient,FC Lorient,FRA,nuevo
+F1,Lyon,Olympique Lyonnais,FRA,cruce_ucl
+F1,Marseille,Olympique de Marseille,FRA,cruce_ucl
+F1,Metz,FC Metz,FRA,nuevo
+F1,Monaco,AS Monaco FC,FRA,cruce_ucl
+F1,Montpellier,Montpellier HSC,FRA,nuevo
+F1,Nancy,AS Nancy-Lorraine,FRA,nuevo
+F1,Nantes,FC Nantes,FRA,nuevo
+F1,Nice,OGC Nice,FRA,nuevo
+F1,Nimes,Nîmes Olympique,FRA,nuevo
+F1,Paris FC,Paris FC,FRA,nuevo
+F1,Paris SG,Paris Saint-Germain FC,FRA,cruce_ucl
+F1,Reims,Stade de Reims,FRA,nuevo
+F1,Rennes,Stade Rennais,FRA,cruce_ucl
+F1,Sochaux,FC Sochaux-Montbéliard,FRA,nuevo
+F1,St Etienne,AS Saint-Étienne,FRA,nuevo
+F1,Strasbourg,RC Strasbourg Alsace,FRA,nuevo
+F1,Toulouse,Toulouse FC,FRA,nuevo
+F1,Troyes,ES Troyes AC,FRA,nuevo
+F1,Valenciennes,Valenciennes FC,FRA,nuevo
+I1,Atalanta,Atalanta BC,ITA,cruce_ucl
+I1,Benevento,Benevento Calcio,ITA,nuevo
+I1,Bologna,Bologna FC 1909,ITA,cruce_ucl
+I1,Brescia,Brescia Calcio,ITA,nuevo
+I1,Cagliari,Cagliari Calcio,ITA,nuevo
+I1,Carpi,Carpi FC 1909,ITA,nuevo
+I1,Catania,Calcio Catania,ITA,nuevo
+I1,Cesena,AC Cesena,ITA,nuevo
+I1,Chievo,AC Chievo Verona,ITA,nuevo
+I1,Como,Como 1907,ITA,cruce_ucl
+I1,Cremonese,US Cremonese,ITA,nuevo
+I1,Crotone,FC Crotone,ITA,nuevo
+I1,Empoli,Empoli FC,ITA,nuevo
+I1,Fiorentina,ACF Fiorentina,ITA,nuevo
+I1,Frosinone,Frosinone Calcio,ITA,nuevo
+I1,Genoa,Genoa CFC,ITA,nuevo
+I1,Inter,FC Internazionale Milano,ITA,cruce_ucl
+I1,Juventus,Juventus FC,ITA,cruce_ucl
+I1,Lazio,SS Lazio,ITA,cruce_ucl
+I1,Lecce,US Lecce,ITA,nuevo
+I1,Livorno,AS Livorno,ITA,nuevo
+I1,Milan,AC Milan,ITA,cruce_ucl
+I1,Monza,AC Monza,ITA,nuevo
+I1,Napoli,SSC Napoli,ITA,cruce_ucl
+I1,Palermo,Palermo FC,ITA,nuevo
+I1,Parma,Parma Calcio 1913,ITA,nuevo
+I1,Pescara,Delfino Pescara 1936,ITA,nuevo
+I1,Pisa,Pisa SC,ITA,nuevo
+I1,Roma,AS Roma,ITA,cruce_ucl
+I1,Salernitana,US Salernitana 1919,ITA,nuevo
+I1,Sampdoria,UC Sampdoria,ITA,nuevo
+I1,Sassuolo,US Sassuolo,ITA,nuevo
+I1,Siena,AC Siena,ITA,nuevo
+I1,Spal,SPAL,ITA,nuevo
+I1,Spezia,Spezia Calcio,ITA,nuevo
+I1,Torino,Torino FC,ITA,nuevo
+I1,Udinese,Udinese Calcio,ITA,nuevo
+I1,Venezia,Venezia FC,ITA,nuevo
+I1,Verona,Hellas Verona,ITA,nuevo
+SP1,Alaves,Deportivo Alavés,ESP,nuevo
+SP1,Almeria,UD Almería,ESP,nuevo
+SP1,Ath Bilbao,Athletic Club,ESP,cruce_ucl
+SP1,Ath Madrid,Club Atlético de Madrid,ESP,cruce_ucl
+SP1,Barcelona,FC Barcelona,ESP,cruce_ucl
+SP1,Betis,Real Betis Balompié,ESP,cruce_ucl
+SP1,Cadiz,Cádiz CF,ESP,nuevo
+SP1,Celta,RC Celta de Vigo,ESP,nuevo
+SP1,Cordoba,Córdoba CF,ESP,nuevo
+SP1,Eibar,SD Eibar,ESP,nuevo
+SP1,Elche,Elche CF,ESP,nuevo
+SP1,Espanol,RCD Espanyol,ESP,nuevo
+SP1,Getafe,Getafe CF,ESP,nuevo
+SP1,Girona,Girona FC,ESP,cruce_ucl
+SP1,Granada,Granada CF,ESP,nuevo
+SP1,Huesca,SD Huesca,ESP,nuevo
+SP1,La Coruna,RC Deportivo de La Coruña,ESP,nuevo
+SP1,Las Palmas,UD Las Palmas,ESP,nuevo
+SP1,Leganes,CD Leganés,ESP,nuevo
+SP1,Levante,Levante UD,ESP,nuevo
+SP1,Malaga,Málaga CF,ESP,nuevo
+SP1,Mallorca,RCD Mallorca,ESP,nuevo
+SP1,Osasuna,CA Osasuna,ESP,nuevo
+SP1,Oviedo,Real Oviedo,ESP,nuevo
+SP1,Real Madrid,Real Madrid CF,ESP,cruce_ucl
+SP1,Santander,Racing de Santander,ESP,nuevo
+SP1,Sevilla,Sevilla FC,ESP,cruce_ucl
+SP1,Sociedad,Real Sociedad de Fútbol,ESP,cruce_ucl
+SP1,Sp Gijon,Real Sporting de Gijón,ESP,nuevo
+SP1,Valencia,Valencia CF,ESP,cruce_ucl
+SP1,Valladolid,Real Valladolid,ESP,nuevo
+SP1,Vallecano,Rayo Vallecano,ESP,nuevo
+SP1,Villarreal,Villarreal CF,ESP,cruce_ucl
+SP1,Zaragoza,Real Zaragoza,ESP,nuevo

@@ -27,6 +27,7 @@ flowchart LR
         ESPN[ESPN API<br/>fixtures, results, odds]
         UEFA[UEFA API<br/>club coefficient]
         NK[Niké<br/>CSV in entradas/nike]
+        FD[football-data.co.uk<br/>top 5 leagues 2012-2026]
     end
     subgraph GH[GitHub Actions]
         ING[src/ingesta]
@@ -38,7 +39,7 @@ flowchart LR
         S[(silver<br/>clean, per source)]
         G[(gold<br/>star schema)]
     end
-    OF & ESPN & UEFA & NK --> ING
+    OF & ESPN & UEFA & NK & FD --> ING
     ING --> B
     ING --> S
     ING --> G
@@ -50,17 +51,19 @@ flowchart LR
 | Layer | Content | Access |
 |---|---|---|
 | `bronze` | Raw response from each source, deduplicated by hash | private |
-| `silver` | Clean data per source: ESPN odds, external probabilities, Niké's forecasts | private |
+| `silver` | Clean data per source: ESPN and league odds, external probabilities, Niké's forecasts | private |
 | `gold` | Star schema: matches, two-legged ties, standings, coefficients, models and forecasts | public read-only (RLS) |
 
 **Main gold tables** (names are in Spanish)
 
 - Dimensions: `d_temporada` (season), `d_ronda` (round), `d_equipo` (club, plus
   `d_equipo_alias` per source), `d_fecha` (date), `d_estadio` (stadium),
-  `d_fuente` (source), `d_modelo` (model), `d_regla_desempate` (tie-break rules).
+  `d_fuente` (source), `d_modelo` (model), `d_regla_desempate` (tie-break rules),
+  `d_liga` (domestic league).
 - Facts: `f_partido` (match: 90' result, extra time and penalties), `f_serie`
   (two-legged ties), `f_tabla_posiciones` (standings snapshot per matchday, with
-  each format's tie-break criteria), `f_coeficiente_uefa`, `f_pronostico` (forecast).
+  each format's tie-break criteria), `f_coeficiente_uefa`, `f_pronostico` (forecast),
+  `f_partido_liga` (domestic league match: result, half time, shots, red cards, xG from 2026-27).
 - Views: `vw_tabla_final`, `vw_evaluacion_pronosticos`, `vw_dash_*` (dashboard
   contract) and `vw_pronostico_vs_mercado` (private).
 
@@ -72,6 +75,7 @@ flowchart LR
 | `carga-espn-resultados` | daily 03:30 UTC | Results and fixtures → standings → forecasts (backtest and live) |
 | `carga-uefa-coeficientes` | manual, once per season | UEFA club coefficient used for each season's draw |
 | `carga-nike-pronosticos` | on push of a CSV to `entradas/nike/` | Niké's forecasts, flagged as late if they arrive after kickoff |
+| `carga-football-data` | daily 06:00 UTC | Premier League, LaLiga, Bundesliga, Serie A and Ligue 1: current season and upcoming fixtures (manual: history from 2012-13) |
 | `carga-openfootball` | manual | History 2015-16 .. 2025-26 |
 | `calcula-tabla-posiciones` | manual | Recomputes the standings of any season |
 
@@ -119,9 +123,9 @@ forecast is never modified after kickoff.
 
 ## Limitations and next steps
 
-- The models only see Champions League matches. The next step (v3) is adding
-  Europe's top 5 leagues, to capture each club's domestic form and forecast those
-  matches too.
+- The models only see Champions League matches. The top 5 leagues are already
+  loaded (2012-13 onwards); the next step (v3) is fitting them together with the
+  Champions League, to capture each club's domestic form and forecast those matches too.
 - In very lopsided matches the models are more extreme than the market; that range
   still needs calibration.
 - ESPN odds don't carry a timestamp for the closing line, so it can't be fully
@@ -132,7 +136,7 @@ forecast is never modified after kickoff.
 | Path | Content |
 |---|---|
 | `sql/ddl/` | Database migrations, in numeric order |
-| `src/ingesta/` | Ingestion per source (ESPN, openfootball, UEFA, Niké) |
+| `src/ingesta/` | Ingestion per source (ESPN, openfootball, UEFA, football-data, Niké) |
 | `src/transformacion/` | Standings per matchday |
 | `src/modelo/` | Dixon-Coles, Elo, backtest, market benchmark and publishing |
 | `seeds/` | Hand-curated club mappings across sources |
@@ -164,7 +168,8 @@ python src/modelo/backtest.py
 
 The full catalogue, with licence and attribution, lives in `gold.d_fuente`:
 [openfootball](https://github.com/openfootball/football.json) (public domain),
-ESPN and UEFA (public APIs without redistribution terms). Data from sources without
+ESPN and UEFA (public APIs without redistribution terms) and
+[Football-Data.co.uk](https://www.football-data.co.uk) (domestic leagues). Data from sources without
 a redistribution licence is only used to compute features and aggregates; betting
 odds are never republished.
 

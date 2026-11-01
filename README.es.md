@@ -27,6 +27,7 @@ flowchart LR
         ESPN[ESPN API<br/>calendario, resultados, cuotas]
         UEFA[UEFA API<br/>coeficiente de club]
         NK[Niké<br/>CSV en entradas/nike]
+        FD[football-data.co.uk<br/>5 grandes ligas 2012-2026]
     end
     subgraph GH[GitHub Actions]
         ING[src/ingesta]
@@ -38,7 +39,7 @@ flowchart LR
         S[(silver<br/>limpio por fuente)]
         G[(gold<br/>modelo estrella)]
     end
-    OF & ESPN & UEFA & NK --> ING
+    OF & ESPN & UEFA & NK & FD --> ING
     ING --> B
     ING --> S
     ING --> G
@@ -56,10 +57,12 @@ flowchart LR
 **Tablas principales de gold**
 
 - Dimensiones: `d_temporada`, `d_ronda`, `d_equipo` (+ `d_equipo_alias` por fuente),
-  `d_fecha`, `d_estadio`, `d_fuente`, `d_modelo`, `d_regla_desempate`.
+  `d_fecha`, `d_estadio`, `d_fuente`, `d_modelo`, `d_regla_desempate`, `d_liga`.
 - Hechos: `f_partido` (resultado a los 90', prórroga y penales), `f_serie` (llaves
   ida y vuelta), `f_tabla_posiciones` (foto por jornada, con los criterios de
-  desempate de cada formato), `f_coeficiente_uefa`, `f_pronostico`.
+  desempate de cada formato), `f_coeficiente_uefa`, `f_pronostico`,
+  `f_partido_liga` (partido de liga nacional: resultado, primer tiempo, tiros,
+  rojas y xG desde 2026-27).
 - Vistas: `vw_tabla_final`, `vw_evaluacion_pronosticos` y
   `vw_pronostico_vs_mercado` (privada).
 
@@ -71,6 +74,7 @@ flowchart LR
 | `carga-espn-resultados` | diario 03:30 UTC | Resultados y calendario → tabla de posiciones → pronósticos (backtest y en vivo) |
 | `carga-uefa-coeficientes` | manual, una vez por temporada | Coeficiente de club UEFA para el sorteo de cada temporada |
 | `carga-nike-pronosticos` | al hacer push de un CSV en `entradas/nike/` | Pronósticos de Niké, con marca de tardío si llegan después del inicio |
+| `carga-football-data` | diario 06:00 UTC | Premier League, LaLiga, Bundesliga, Serie A y Ligue 1: temporada actual y próximos partidos (manual: histórico desde 2012-13) |
 | `carga-openfootball` | manual | Histórico 2015-16 .. 2025-26 |
 | `calcula-tabla-posiciones` | manual | Recalcula la tabla de cualquier temporada |
 
@@ -118,9 +122,10 @@ pronóstico en vivo no se modifica después del inicio.
 
 ## Limitaciones y próximos pasos
 
-- Los modelos solo ven partidos de Champions. El próximo paso (v3) es sumar las
-  5 grandes ligas de Europa, para medir la forma de cada club en su liga y
-  pronosticar también esos partidos.
+- Los modelos solo ven partidos de Champions. Las 5 grandes ligas ya están
+  cargadas (desde 2012-13); el próximo paso (v3) es ajustarlas junto con la
+  Champions, para medir la forma de cada club en su liga y pronosticar también
+  esos partidos.
 - En partidos muy desparejos los modelos son más extremos que el mercado; falta
   calibrar ese tramo.
 - Las cuotas de ESPN no tienen fecha de la línea de cierre: no se puede descartar
@@ -131,7 +136,7 @@ pronóstico en vivo no se modifica después del inicio.
 | Ruta | Contenido |
 |---|---|
 | `sql/ddl/` | Scripts de base de datos, en orden numérico |
-| `src/ingesta/` | Captura por fuente (ESPN, openfootball, UEFA, Niké) |
+| `src/ingesta/` | Captura por fuente (ESPN, openfootball, UEFA, football-data, Niké) |
 | `src/transformacion/` | Tabla de posiciones por jornada |
 | `src/modelo/` | Dixon-Coles, Elo, backtest, benchmark contra el mercado y publicación |
 | `seeds/` | Equivalencias de clubes entre fuentes, curadas a mano |
@@ -161,7 +166,8 @@ python src/modelo/backtest.py
 
 El catálogo completo, con licencia y atribución, está en `gold.d_fuente`:
 [openfootball](https://github.com/openfootball/football.json) (dominio público),
-ESPN y UEFA (APIs públicas sin términos de redistribución). Los datos de fuentes
+ESPN y UEFA (APIs públicas sin términos de redistribución) y
+[Football-Data.co.uk](https://www.football-data.co.uk) (ligas nacionales). Los datos de fuentes
 sin licencia de redistribución se usan solo para calcular variables y agregados;
 las cuotas no se republican.
 

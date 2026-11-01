@@ -1,0 +1,38 @@
+# Ligas nacionales (Premier, LaLiga, Bundesliga, Serie A, Ligue 1) desde
+# football-data.co.uk. Diario: temporada actual + próximos partidos.
+# Manual: cualquier rango de temporadas (histórico desde 2012). Idempotente.
+name: carga-football-data
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      temporadas:
+        description: "Años de inicio: '2012-2025', '2024' o '2023,2024' (vacío = temporada actual)"
+        required: false
+      ligas:
+        description: "ENG1,ESP1,GER1,ITA1,FRA1 (vacío = las 5)"
+        required: false
+
+jobs:
+  cargar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Cargar ligas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TEMPORADAS: ${{ inputs.temporadas }}
+          LIGAS: ${{ inputs.ligas }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "Falta el secret DATABASE_URL"; exit 1; fi
+          ARGS=""
+          if [ -n "$TEMPORADAS" ]; then ARGS="$ARGS --temporadas $TEMPORADAS"; fi
+          if [ -n "$LIGAS" ]; then ARGS="$ARGS --ligas $LIGAS"; fi
+          python src/ingesta/football_data_ligas.py $ARGS
