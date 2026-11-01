@@ -549,6 +549,7 @@ const MARKET_SUBSET = {
   partidos: 297,
   rows: [
     ["Market (ESPN BET closing, margin removed)", 0.877, "square", true],
+    ["Dixon-Coles v3", 0.922, "triangle", false],
     ["Dixon-Coles v2", 0.926, "circle", false],
     ["Dixon-Coles v1", 0.939, "ring", false],
     ["Elo UCL v1", 0.950, "diamond", false],
@@ -1062,7 +1063,7 @@ async function loadEval() {
       <div class="heading" style="margin-bottom:6px"><h3>Reference: the market</h3><span class="small muted">← lower is better</span></div>
       <p class="small muted" style="margin-top:0">A different sample: ${MARKET_SUBSET.partidos} matches from 2024/25 and 2025/26 with ESPN BET closing odds, margin removed (Shin’s method). The backtest calculation is stored in the repository. Not comparable with the panel above.</p>
       ${marketRows}${axis}
-      <p class="note">In this sample, the market had a lower log loss than every model evaluated on it. Only aggregates are published; never per-match odds or market probabilities.</p>
+      <p class="note">In this sample, the market had a lower log loss than the models. Only aggregates are published; never per-match odds or market probabilities.</p>
     </div>
 
     <div class="sub-block">

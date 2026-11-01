@@ -549,6 +549,7 @@ const MARKET_SUBSET = {
   partidos: 297,
   rows: [
     ["Mercado (cierre ESPN BET, sin margen)", 0.877, "square", true],
+    ["Dixon-Coles v3", 0.922, "triangle", false],
     ["Dixon-Coles v2", 0.926, "circle", false],
     ["Dixon-Coles v1", 0.939, "ring", false],
     ["Elo UCL v1", 0.950, "diamond", false],
@@ -1057,7 +1058,7 @@ async function loadEval() {
       <div class="heading" style="margin-bottom:6px"><h3>Referencia: el mercado</h3><span class="small muted">← menor es mejor</span></div>
       <p class="small muted" style="margin-top:0">Otra muestra: ${MARKET_SUBSET.partidos} partidos de 2024/25 y 2025/26 con cuota de cierre de ESPN BET, sin margen (método de Shin). Cálculo del backtest guardado en el repositorio. No es comparable con el panel anterior.</p>
       ${marketRows}${axis}
-      <p class="note">En esta muestra, el mercado obtuvo menor log loss que los modelos evaluados en ella. Solo se publican agregados; nunca cuotas ni probabilidades del mercado por partido.</p>
+      <p class="note">En esta muestra, el mercado obtuvo menor log loss que los modelos. Solo se publican agregados; nunca cuotas ni probabilidades del mercado por partido.</p>
     </div>
 
     <div class="sub-block">
