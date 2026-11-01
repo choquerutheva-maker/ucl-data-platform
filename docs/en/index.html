@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UCL Data Platform</title>
-<meta name="description" content="Educational statistical modeling project: probabilities from two models (Dixon-Coles and Elo) for the UEFA Champions League 2026/27, standings by matchday and walk-forward evaluation.">
+<meta name="description" content="Educational statistical modeling project: probabilities from three models (Dixon-Coles v2, Dixon-Coles v3 and Elo) for the UEFA Champions League 2026/27, standings by matchday and walk-forward evaluation.">
 <meta property="og:title" content="UCL Data Platform · Football has passion. It also has data.">
-<meta property="og:description" content="Two statistical models, their probabilities for every Champions League match, and how they are evaluated.">
+<meta property="og:description" content="Three statistical models, their probabilities for every Champions League match, and how they are evaluated.">
 <meta property="og:type" content="website">
 <link rel="alternate" hreflang="es" href="../">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23152445'/%3E%3Ctext x='16' y='23' font-family='Segoe UI,sans-serif' font-size='20' font-weight='800' fill='%23f4f6ff' text-anchor='middle'%3EU%3C/text%3E%3C/svg%3E">
@@ -195,6 +195,7 @@
   .shape { display: inline-block; width: 10px; height: 10px; flex: none; background: var(--text); }
   .shape.circle { border-radius: 50%; }
   .shape.diamond { transform: rotate(45deg) scale(.85); border-radius: 1px; }
+  .shape.triangle { clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 11px; height: 11px; }
   .shape.ring { border-radius: 50%; background: transparent; border: 2px solid var(--muted); }
   .shape.square { border-radius: 1px; background: var(--muted); }
   .shape.ref { border-radius: 50%; background: var(--muted); }
@@ -383,7 +384,7 @@
     <div>
       <div class="eyebrow">Champions League · data science</div>
       <h1>Football has passion.<br><em>It also has data.</em></h1>
-      <p>Two statistical models estimate the probability of a home win, a draw and an away win for every match. Here you can compare their estimates and see how they are evaluated against real results.</p>
+      <p>Three statistical models estimate the probability of a home win, a draw and an away win for every match. Here you can compare their estimates and see how they are evaluated against real results.</p>
       <div class="hero-actions">
         <a href="#proxima">Explore the matchday ↓</a>
         <a class="secondary" href="#precision">See the evaluation →</a>
@@ -392,7 +393,7 @@
     <div class="hero-graphic" id="hero-graphic" hidden></div>
   </div>
   <div class="proof-strip" id="proof">
-    <div><b>2 models</b><span>Dixon-Coles v2 and Elo UCL v1</span></div>
+    <div><b>3 models</b><span>Dixon-Coles v2, Dixon-Coles v3 and Elo UCL v1</span></div>
     <div><b id="proof-n">—</b><span>Backtest 2023/24–2025/26</span></div>
     <div><b>No peeking ahead</b><span>Walk-forward evaluation</span></div>
   </div>
@@ -430,6 +431,7 @@
       <li><span class="sw e"></span>Draw</li>
       <li><span class="sw v"></span>Away</li>
       <li><span class="shape circle"></span>Dixon-Coles v2</li>
+      <li><span class="shape triangle"></span>Dixon-Coles v3</li>
       <li><span class="shape diamond"></span>Elo UCL v1</li>
     </ul>
     <div id="matches" aria-busy="true">
@@ -499,6 +501,7 @@
         <span class="step">02 / ESTIMATE</span>
         <h3>Two different approaches</h3>
         <p>Dixon-Coles models each team’s goals; Elo UCL sums up relative strength in a single rating. Both give home, draw and away probabilities; their differences are shown as information, not as a recommendation.</p>
+        <p>Dixon-Coles v3 adds the top 5 domestic leagues: each club’s league form counts too.</p>
         <a href="https://github.com/choquerutheva-maker/ucl-data-platform#models" rel="noopener">Models ↗</a>
       </article>
       <article>
@@ -552,15 +555,16 @@ const MARKET_SUBSET = {
   ],
 };
 const BACKTEST_SEASONS = [2023, 2024, 2025];
-const DISAGREE_MIN = 0.15; // max absolute gap between the two live models
+const DISAGREE_MIN = 0.15; // max absolute gap between Dixon-Coles v2 and Elo (v3 not used until it has live results)
 
 const MODELS = {
   "Dixon-Coles v2": { shape: "circle", live: true },
+  "Dixon-Coles v3": { shape: "triangle", live: true },
   "Elo UCL v1": { shape: "diamond", live: true },
   "Dixon-Coles v1": { shape: "ring", live: false, note: "backtest only" },
 };
-const MODEL_ORDER = ["Dixon-Coles v2", "Elo UCL v1", "Dixon-Coles v1"];
-const LIVE_MODELS = ["Dixon-Coles v2", "Elo UCL v1"];
+const MODEL_ORDER = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo UCL v1", "Dixon-Coles v1"];
+const LIVE_MODELS = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo UCL v1"];
 
 // Standings bands: provisional wording until es_posicion_final
 const BANDS = {
@@ -792,7 +796,7 @@ function disagreement(models) {
 }
 
 function details(m, models) {
-  const dc = models["Dixon-Coles v2"], elo = models["Elo UCL v1"];
+  const dc = models["Dixon-Coles v2"], dc3 = models["Dixon-Coles v3"], elo = models["Elo UCL v1"];
   const sL = m.nombre_corto_local || m.local, sV = m.nombre_corto_visita || m.visita;
   const xg = (r) => r && r.goles_esp_local != null
     ? `${esc(sL)} ${num(r.goles_esp_local, 2)} · ${esc(sV)} ${num(r.goles_esp_visita, 2)}` : NA;
@@ -805,6 +809,7 @@ function details(m, models) {
       <div class="detail-body">
         <dl>
           ${dc ? `<dt>Dixon-Coles v2</dt><dd>Expected goals: ${xg(dc)}<br>Probability of 3+ goals: ${pct(dc.prob_over_2_5)}</dd>` : ""}
+          ${dc3 ? `<dt>Dixon-Coles v3</dt><dd>Expected goals: ${xg(dc3)}<br>Probability of 3+ goals: ${pct(dc3.prob_over_2_5)}</dd>` : ""}
           ${elo ? `<dt>Elo UCL v1</dt><dd>Expected goals: ${xg(elo)}<br>Probability of 3+ goals: ${pct(elo.prob_over_2_5)}<br><small>Elo only estimates home, draw and away.</small></dd>` : ""}
           <dt>Data up to</dt><dd>${cut.length ? cut.map((c) => esc(fmtDate.format(localDate(c)))).join(" / ") : NA}</dd>
           <dt>Full names</dt><dd>${esc(m.local)} – ${esc(m.visita)}</dd>
@@ -1049,7 +1054,7 @@ async function loadEval() {
         <p class="big">${pct(dc?.acierto, 1)}</p>
         <p style="margin-top:4px">Dixon-Coles v2 backtest accuracy: how often the most likely outcome was the actual result.</p>
         <p>But a model can get the most likely outcome right and still assign unreliable probabilities. <b>Log loss</b> measures the quality of the probabilities: <b>lower is better; 1.10 = random guessing</b>. It penalises confident mistakes most of all.</p>
-        <p class="sample">Small differences between models do not, on their own, prove that one is better.</p>
+        <p class="sample">Small differences between models do not, on their own, prove that one is better.${agg["Dixon-Coles v3"] ? " For example, Dixon-Coles v3 has a log loss 0.004 lower than v2, but the difference is not yet statistically significant (95% CI: −0.022 to +0.014)." : ""}</p>
       </aside>
     </div>
 
@@ -1057,7 +1062,7 @@ async function loadEval() {
       <div class="heading" style="margin-bottom:6px"><h3>Reference: the market</h3><span class="small muted">← lower is better</span></div>
       <p class="small muted" style="margin-top:0">A different sample: ${MARKET_SUBSET.partidos} matches from 2024/25 and 2025/26 with ESPN BET closing odds, margin removed (Shin’s method). The backtest calculation is stored in the repository. Not comparable with the panel above.</p>
       ${marketRows}${axis}
-      <p class="note">In this sample, the market had a lower log loss than all three models. Only aggregates are published; never per-match odds or market probabilities.</p>
+      <p class="note">In this sample, the market had a lower log loss than every model evaluated on it. Only aggregates are published; never per-match odds or market probabilities.</p>
     </div>
 
     <div class="sub-block">
@@ -1089,6 +1094,7 @@ async function loadEval() {
 
 function svgShape(shp, cx, cy, r = 6) {
   if (shp === "diamond") return `<rect x="${cx - r * 0.75}" y="${cy - r * 0.75}" width="${r * 1.5}" height="${r * 1.5}" transform="rotate(45 ${cx} ${cy})" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
+  if (shp === "triangle") return `<polygon points="${cx},${cy - r * 1.1} ${cx + r},${cy + r * 0.75} ${cx - r},${cy + r * 0.75}" fill="var(--text)" stroke="var(--panel)" stroke-width="1.5"/>`;
   if (shp === "ring") return `<circle cx="${cx}" cy="${cy}" r="${r - 1.5}" fill="var(--panel)" stroke="var(--muted)" stroke-width="2"/>`;
   return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
 }
@@ -1141,7 +1147,7 @@ function renderSeasonChart() {
 function renderLive(rows) {
   const box = $("live");
   if (!rows.length) {
-    box.innerHTML = `<div class="empty"><strong>Live evaluation not available yet</strong>Live forecasts start with matchday 4 (3–4 November). Once those matches are played, the log loss and accuracy of Dixon-Coles v2 and Elo UCL v1 will appear here.</div>`;
+    box.innerHTML = `<div class="empty"><strong>Live evaluation not available yet</strong>Live forecasts start with matchday 4 (3–4 November). Once those matches are played, the log loss and accuracy of Dixon-Coles v2, Dixon-Coles v3 and Elo UCL v1 will appear here.</div>`;
     return;
   }
   box.innerHTML = `<div class="panel">${LIVE_MODELS.filter((m) => rows.some((r) => r.modelo === m)).map((m) => {
