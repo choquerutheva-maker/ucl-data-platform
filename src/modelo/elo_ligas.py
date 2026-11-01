@@ -40,6 +40,7 @@ import json
 import math
 import time
 from collections import defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -92,6 +93,7 @@ class EloLigas:
         self.c_coef = c_coef
         self.x_inicial = x_inicial or (lambda club, temporada: 0.0)
         self.elo = {}
+        self.historico = []                     # (fecha, club, rating después del partido)
         self.historial = {"liga": [], "UCL": []}
         self.logit = {"liga": (2.5, -0.55, 0.55), "UCL": (2.5, -0.55, 0.55)}
         self.temporada_logit = None
@@ -125,12 +127,32 @@ class EloLigas:
         self.historial[self.tipo(p)].append((d, r))
         self.elo[p["local"]] += delta
         self.elo[p["visita"]] -= delta
+        self.historico.append((p["fecha"], p["local"], self.elo[p["local"]]))
+        self.historico.append((p["fecha"], p["visita"], self.elo[p["visita"]]))
+
+    def tramos(self):
+        """[(club, fecha_desde, fecha_hasta, elo)]: un tramo por día con partidos del club."""
+        por_club = defaultdict(dict)
+        for fecha, club, r in self.historico:
+            por_club[club][fecha] = r                          # el último del día manda
+        salida = []
+        for club, fechas in por_club.items():
+            orden = sorted(fechas)
+            for i, f in enumerate(orden):
+                hasta = orden[i + 1] - timedelta(days=1) if i + 1 < len(orden) else date(9999, 12, 31)
+                salida.append((club, f, hasta, round(fechas[f], 2)))
+        return salida
 
 
-def funcion_x_inicial(todos, pais_de):
+# Elegidos con la UCL 2022-23 (grilla de 144 combinaciones, main() de este archivo)
+PARAMETROS = {"k_liga": 15.0, "k_ucl": 20.0, "h_liga": 70.0, "h_ucl": 55.0, "c_coef": 100.0}
+
+
+def funcion_x_inicial(todos, pais_de, coefs=None, pisos=None):
     """x de arranque de cada club: su coeficiente o el piso de su asociación,
     centrado con la media de los clubes UCL de esa temporada (desde 2015)."""
-    coefs, pisos = leer_coeficientes(), leer_pisos()
+    coefs = leer_coeficientes() if coefs is None else coefs
+    pisos = leer_pisos() if pisos is None else pisos
     clubes = defaultdict(set)
     for p in todos:
         if p["comp"] == "UCL":

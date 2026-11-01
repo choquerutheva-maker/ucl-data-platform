@@ -89,6 +89,7 @@ Every pipeline is idempotent: it can be re-run without duplicating data.
 | **Dixon-Coles v2** | v1 + UEFA club coefficient: `attack = β·log(coefficient) + club deviation`. A debutant club starts from what its coefficient predicts instead of an average team. |
 | **Dixon-Coles v3** | v2 also trained on the top 5 domestic leagues (from 2015-16): each club has one strength shared between the Champions League and its league, with goal level and home advantage per competition. Clubs without a UEFA coefficient start from their association's floor. |
 | **Elo UCL** | Elo with goal margin and regression to the mean between seasons, plus an ordered logit to turn Elo differences into 1X2 probabilities. |
+| **Elo propio** (own Elo) | Our own Elo rating, built because the ClubElo API has been down since October 2026: top 5 leagues from 2012-13 plus the Champions League, separate K and home advantage for league and UCL matches, new clubs start from their UEFA coefficient. Its full history is published in `gold.f_elo_historico` (`fuente = 'propio'`). |
 
 **No leakage.** Walk-forward backtest: each matchday is forecast training only on
 matches played before it. Hyperparameters are tuned on 2022-23 and the test set is
@@ -100,10 +101,13 @@ matches played before it. Hyperparameters are tuned on 2022-23 and the test set 
 | Elo UCL | 0.942 | 0.556 | 57.3% |
 | Dixon-Coles v1 | 0.935 | 0.551 | 57.9% |
 | Dixon-Coles v2 | 0.929 | 0.548 | 58.3% |
-| **Dixon-Coles v3** | **0.924** | **0.544** | **59.1%** |
+| Dixon-Coles v3 | 0.924 | 0.544 | 59.1% |
+| Elo propio | 0.923 | 0.543 | 57.3% |
 
 v3 improves on v2 in 2023-24 and 2024-25 but not in 2025-26; overall the difference
-(-0.004, 95% CI -0.022 to +0.014) is not statistically significant yet.
+(-0.004, 95% CI -0.022 to +0.014) is not statistically significant yet. The own Elo
+(trained with the leagues) ties with v3 and beats Elo UCL by 0.019 (95% CI -0.042 to
++0.007), again not yet significant.
 
 **Against the market.** Compared with ESPN BET closing odds with the margin removed
 (Shin's method, 297 matches from 2024-26), the market scores a log loss of 0.877:
@@ -112,7 +116,7 @@ knows line-ups and injuries, information these models don't have. In the domesti
 leagues (5,256 matches, 2023-26) v3 scores 0.985 against 0.963 for the average
 closing odds.
 
-**Live.** Since matchday 4 of 2026-27, Dixon-Coles v2, v3 and Elo forecasts are
+**Live.** Since matchday 4 of 2026-27, Dixon-Coles v2, v3 and Elo propio forecasts are
 published before every match (`gold.f_pronostico`, `es_backtest = FALSE`). A live
 forecast is never modified after kickoff.
 

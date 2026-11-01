@@ -36,6 +36,8 @@ from backtest import EloUCL, leer_partidos, metricas, walk_forward
 from backtest_ligas import PAIS_LIGA, PRIMERA_TEMPORADA_LIGA, leer_ligas, walk_forward_ucl
 from coeficientes import anotar, anotar_conjunto, leer_coeficientes, leer_pisos
 from dixon_coles import DixonColes
+from elo_ligas import PARAMETROS as PARAMETROS_ELO_PROPIO
+from elo_ligas import funcion_x_inicial, recorrer
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -58,10 +60,14 @@ MODELOS = {
                           "Dixon-Coles v2 entrenado también con las 5 grandes ligas (desde 2015-16): la misma "
                           "fuerza por club en la UCL y en su liga, con nivel de goles y ventaja de local por "
                           "competición; un club sin coeficiente parte del piso de su asociación."),
+    "ELO_LIGAS": ("Elo propio", "v1", "ELO",
+                  "Elo propio (calculado por el proyecto, no es ClubElo): 5 grandes ligas desde 2012-13 + UCL; "
+                  "K y ventaja de local por tipo de competición; un club nuevo arranca según su coeficiente "
+                  "UEFA o el piso de su asociación; logit ordenado por temporada para UCL y ligas."),
 }
-# En vivo desde la J4 2026-27: v2, v3 y Elo lado a lado con el mercado
-# (gold.vw_pronostico_vs_mercado). La v1 exageraba con los debutantes: solo backtest.
-MODELOS_EN_VIVO = {"DIXON_COLES_COEF", "DIXON_COLES_LIGAS", "ELO_UCL"}
+# En vivo desde la J4 2026-27: Dixon-Coles v2 y v3 y Elo propio lado a lado con el
+# mercado (gold.vw_pronostico_vs_mercado). Dixon-Coles v1 y Elo UCL v1: solo backtest.
+MODELOS_EN_VIVO = {"DIXON_COLES_COEF", "DIXON_COLES_LIGAS", "ELO_LIGAS"}
 COLUMNAS = ["prob_local", "prob_empate", "prob_visita", "goles_esp_local", "goles_esp_visita", "prob_over_2_5"]
 
 
@@ -98,23 +104,34 @@ def leer_ligas_postgres(cx):
     for comp, t, fecha, local, visita, gl, gv, pais in filas:
         pais_de.setdefault(local, pais)
         pais_de.setdefault(visita, pais)
-        if t >= PRIMERA_TEMPORADA_LIGA:
-            ligas.append({"comp": comp, "id_temporada": int(t), "id_ronda": None,
-                          "fecha": fecha if isinstance(fecha, date) else date.fromisoformat(str(fecha)),
-                          "local": local, "visita": visita, "es_neutral": False, "jugado": True,
-                          "goles_local_90": gl, "goles_visita_90": gv})
+        # Todas las temporadas: el Elo propio usa desde 2012, la v3 filtra desde 2015 (conjunto_v3)
+        ligas.append({"comp": comp, "id_temporada": int(t), "id_ronda": None,
+                      "fecha": fecha if isinstance(fecha, date) else date.fromisoformat(str(fecha)),
+                      "local": local, "visita": visita, "es_neutral": False, "jugado": True,
+                      "goles_local_90": gl, "goles_visita_90": gv})
     return ligas, pais_de
 
 
 def conjunto_v3(partidos, ligas, pais_de, coefs, pisos):
     """Partidos UCL (jugados y programados) + ligas con el x de la v3. Copias: no toca el x de la v2."""
     ucl = [{**p, "comp": "UCL"} for p in partidos]
-    todos = sorted(ucl + [dict(p) for p in ligas], key=lambda p: (p["fecha"], p["comp"], p["local"]))
+    ligas = [dict(p) for p in ligas if p["id_temporada"] >= PRIMERA_TEMPORADA_LIGA]
+    todos = sorted(ucl + ligas, key=lambda p: (p["fecha"], p["comp"], p["local"]))
     anotar_conjunto(todos, coefs, pisos, pais_de)
     return todos
 
 
-def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None):
+def elo_propio(partidos, ligas, pais_de, coefs, pisos, temporadas):
+    """Recorre UCL + ligas (desde 2012) en orden. Devuelve (filas de backtest UCL, Elo al día)."""
+    todos = sorted([{**p, "comp": "UCL"} for p in partidos if p["jugado"]] + [dict(p) for p in ligas],
+                   key=lambda p: (p["fecha"], p["comp"], p["local"]))
+    x_inicial = funcion_x_inicial(todos, pais_de, coefs, pisos)
+    filas, elo = recorrer(todos, {("UCL", t) for t in temporadas}, PARAMETROS_ELO_PROPIO, x_inicial)
+    elo.datos_hasta = max(p["fecha"] for p in todos)
+    return filas, elo
+
+
+def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None, datos_elo=None):
     jugados = [p for p in partidos if p["jugado"]]
     temporadas = sorted({p["id_temporada"] for p in jugados if p["id_temporada"] >= desde_temporada})
 
@@ -126,6 +143,10 @@ def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None):
         filas_v3, _ = walk_forward_ucl(jugados_v3, set(temporadas), VIDA_MEDIA_DIAS_LIGAS, REG_LIGAS,
                                        con_v2=False)
         filas_bt += filas_v3
+    elo2 = None
+    if datos_elo:
+        filas_elo, elo2 = elo_propio(partidos, *datos_elo, temporadas)
+        filas_bt += filas_elo
     salida = []
     for f in filas_bt:
         if f["modelo"] not in MODELOS:
@@ -162,6 +183,9 @@ def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None):
             predictores["DIXON_COLES_LIGAS"] = lambda p: dc3.predecir(
                 p["local"], p["visita"], p["es_neutral"], *x_v3[(p["fecha"], p["local"], p["visita"])])
             hasta["DIXON_COLES_LIGAS"] = hoy_v3
+        if elo2:
+            predictores["ELO_LIGAS"] = lambda p: elo2.predecir({**p, "comp": "UCL"})
+            hasta["ELO_LIGAS"] = elo2.datos_hasta
         for p in por_empezar:
             base = {"id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
                     "local": p["local"], "visita": p["visita"], "es_backtest": False}
@@ -174,7 +198,7 @@ def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None):
     met = {m: {"temporadas_prueba": prueba,
                "prueba": metricas([f for f in filas_bt if f["modelo"] == m and f["id_temporada"] in prueba])}
            for m in MODELOS if any(f["modelo"] == m for f in filas_bt)}
-    return salida, met
+    return salida, met, elo2
 
 
 # -----------------------------------------------------------------------------
@@ -198,7 +222,21 @@ def escribir_postgres(cx, salida, met, partidos):
                                                             "vida_media_dias_coef": VIDA_MEDIA_DIAS_COEF,
                                                             "reg_coef": REG_COEF,
                                                             "vida_media_dias_ligas": VIDA_MEDIA_DIAS_LIGAS,
-                                                            "reg_ligas": REG_LIGAS}}), descripcion)).fetchone()[0]
+                                                            "reg_ligas": REG_LIGAS,
+                                                            "elo_propio": PARAMETROS_ELO_PROPIO}}),
+             descripcion)).fetchone()[0]
+
+    # Modelos que dejaron de publicarse en vivo: se borran sus pronósticos en vivo de
+    # partidos que todavía no empezaron (los ya jugados se conservan tal cual)
+    en_vivo = [MODELOS[m][:2] for m in sorted(MODELOS_EN_VIVO)]
+    cx.execute("""
+        DELETE FROM gold.f_pronostico f
+        USING gold.d_modelo m, gold.f_partido p
+        WHERE m.id_modelo = f.id_modelo AND p.id_partido = f.id_partido
+          AND NOT f.es_backtest AND p.estado = 'PROGRAMADO'
+          AND (p.inicio_utc IS NULL OR p.inicio_utc > now())
+          AND NOT ((m.nombre, m.version) IN (SELECT * FROM unnest(%s::text[], %s::text[])))""",
+               ([n for n, _ in en_vivo], [v for _, v in en_vivo]))
 
     sql = f"""
         INSERT INTO gold.f_pronostico (id_partido, id_modelo, generado_en, {", ".join(COLUMNAS)}, es_backtest, datos_hasta)
@@ -217,6 +255,17 @@ def escribir_postgres(cx, salida, met, partidos):
             for f in salida])
 
 
+def escribir_elo(cx, elo):
+    """Reemplaza el historial del Elo propio en gold.f_elo_historico (fuente = 'propio')."""
+    id_equipo = dict(cx.execute("SELECT nombre_canonico, id_equipo FROM gold.d_equipo").fetchall())
+    tramos = [(id_equipo[c], d, h, r) for c, d, h, r in elo.tramos() if c in id_equipo]
+    cx.execute("DELETE FROM gold.f_elo_historico WHERE fuente = 'propio'")
+    with cx.cursor() as cur:
+        cur.executemany("""INSERT INTO gold.f_elo_historico (fuente, id_equipo, fecha_desde, fecha_hasta, elo)
+                           VALUES ('propio', %s, %s, %s, %s)""", tramos)
+    return len(tramos)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Publica pronósticos en gold.f_pronostico")
     ap.add_argument("--desde-temporada", type=int, default=2023)
@@ -232,12 +281,14 @@ def main():
         coefs, pisos = leer_coeficientes(cx), leer_pisos(cx)
     else:
         partidos = leer_partidos()
-        ligas, pais_de = leer_ligas() if (RAIZ / "data" / "silver" / "football_data_partidos.csv").exists() else ([], {})
+        hay_ligas = (RAIZ / "data" / "silver" / "football_data_partidos.csv").exists()
+        ligas, pais_de = leer_ligas(desde=2012) if hay_ligas else ([], {})
         coefs, pisos = leer_coeficientes(), leer_pisos()
 
-    # Sin partidos de liga cargados la v3 no se publica (sería igual a la v2)
+    # Sin partidos de liga cargados no se publican la v3 ni el Elo propio
     todos_v3 = conjunto_v3(partidos, ligas, pais_de, coefs, pisos) if ligas else None
-    salida, met = pronosticos(partidos, args.desde_temporada, args.en_vivo, todos_v3)
+    datos_elo = (ligas, pais_de, coefs, pisos) if ligas else None
+    salida, met, elo = pronosticos(partidos, args.desde_temporada, args.en_vivo, todos_v3, datos_elo)
     n_bt = sum(f["es_backtest"] for f in salida)
     print(f"Pronósticos: {n_bt} de backtest, {len(salida) - n_bt} en vivo")
     for m, d in met.items():
@@ -246,10 +297,12 @@ def main():
     if url_bd:
         try:
             escribir_postgres(cx, salida, met, partidos)
+            n_elo = escribir_elo(cx, elo) if elo else 0
             cx.commit()
         finally:
             cx.close()
-        print(f"[{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC] cargado en gold.f_pronostico")
+        print(f"[{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC] cargado en gold.f_pronostico "
+              f"y {n_elo} tramos del Elo propio en gold.f_elo_historico")
     else:
         destino = RAIZ / "data" / "gold"
         destino.mkdir(parents=True, exist_ok=True)
@@ -258,6 +311,11 @@ def main():
             w = csv.DictWriter(f, fieldnames=campos, extrasaction="ignore")
             w.writeheader()
             w.writerows(salida)
+        if elo:
+            with (destino / "f_elo_historico.csv").open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["nombre_canonico", "fecha_desde", "fecha_hasta", "elo"])
+                w.writerows(elo.tramos())
         print(f"Sin DATABASE_URL: CSV en {destino}")
 
 

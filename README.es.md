@@ -88,6 +88,7 @@ Todos los procesos son idempotentes: se pueden volver a correr sin duplicar dato
 | **Dixon-Coles v2** | v1 + coeficiente de club UEFA: `ataque = β·log(coeficiente) + desvío del club`. Un club que debuta parte de lo que predice su coeficiente y no de un equipo promedio. |
 | **Dixon-Coles v3** | v2 entrenado también con las 5 grandes ligas (desde 2015-16): cada club tiene una sola fuerza para la Champions y su liga, con nivel de goles y ventaja de local por competición. Un club sin coeficiente UEFA parte del piso de su asociación. |
 | **Elo UCL** | Elo con margen de goles y regresión a la media entre temporadas + logit ordenado para pasar de diferencia de Elo a probabilidades 1X2. |
+| **Elo propio** | Elo calculado por el proyecto, porque la API de ClubElo está caída desde octubre de 2026: 5 grandes ligas desde 2012-13 + Champions, K y ventaja de local distintos para liga y UCL, y los clubes nuevos parten de su coeficiente UEFA. Su historial completo se publica en `gold.f_elo_historico` (`fuente = 'propio'`). |
 
 **Evaluación sin leakage.** Backtest *walk-forward*: cada día de partidos se
 pronostica entrenando solo con lo jugado antes. Los hiperparámetros se eligen con
@@ -99,11 +100,13 @@ pronostica entrenando solo con lo jugado antes. Los hiperparámetros se eligen c
 | Elo UCL | 0,942 | 0,556 | 57,3 % |
 | Dixon-Coles v1 | 0,935 | 0,551 | 57,9 % |
 | Dixon-Coles v2 | 0,929 | 0,548 | 58,3 % |
-| **Dixon-Coles v3** | **0,924** | **0,544** | **59,1 %** |
+| Dixon-Coles v3 | 0,924 | 0,544 | 59,1 % |
+| Elo propio | 0,923 | 0,543 | 57,3 % |
 
 La v3 mejora a la v2 en 2023-24 y 2024-25, pero no en 2025-26; en total la
 diferencia (-0,004, IC 95 % -0,022 a +0,014) todavía no es estadísticamente
-significativa.
+significativa. El Elo propio (entrenado con las ligas) empata con la v3 y mejora
+al Elo UCL en 0,019 (IC 95 % -0,042 a +0,007), tampoco significativo todavía.
 
 **Contra el mercado.** Frente a la cuota de cierre de ESPN BET sin margen (método
 de Shin, 297 partidos de 2024-26), el mercado tiene log loss 0,877: v2 queda
@@ -112,7 +115,7 @@ alineaciones y lesiones, información que estos modelos no tienen. En las ligas
 (5.256 partidos, 2023-26) la v3 da 0,985 contra 0,963 del cierre promedio.
 
 **En vivo.** Desde la J4 de 2026-27 se publican los pronósticos de Dixon-Coles v2,
-v3 y Elo antes de cada partido (`gold.f_pronostico`, `es_backtest = FALSE`). Un
+v3 y Elo propio antes de cada partido (`gold.f_pronostico`, `es_backtest = FALSE`). Un
 pronóstico en vivo no se modifica después del inicio.
 
 ## Hallazgos
