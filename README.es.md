@@ -74,7 +74,7 @@ flowchart LR
 | `carga-espn-resultados` | diario 03:30 UTC | Resultados y calendario → tabla de posiciones → pronósticos (backtest y en vivo) |
 | `carga-uefa-coeficientes` | manual, una vez por temporada | Coeficiente de club UEFA para el sorteo de cada temporada |
 | `carga-nike-pronosticos` | al hacer push de un CSV en `entradas/nike/` | Pronósticos de Niké, con marca de tardío si llegan después del inicio |
-| `carga-football-data` | diario 06:00 UTC | Premier League, LaLiga, Bundesliga, Serie A y Ligue 1: temporada actual y próximos partidos (manual: histórico desde 2012-13) |
+| `carga-football-data` | diario 03:00 UTC | Premier League, LaLiga, Bundesliga, Serie A y Ligue 1: temporada actual y próximos partidos (manual: histórico desde 2012-13) |
 | `carga-openfootball` | manual | Histórico 2015-16 .. 2025-26 |
 | `calcula-tabla-posiciones` | manual | Recalcula la tabla de cualquier temporada |
 
@@ -86,6 +86,7 @@ Todos los procesos son idempotentes: se pueden volver a correr sin duplicar dato
 |---|---|
 | **Dixon-Coles v1** | Poisson bivariado con corrección τ para marcadores bajos; ataque y defensa por club con regularización L2 y ponderación temporal (vida media de 365 días). Solo partidos UCL a los 90'. |
 | **Dixon-Coles v2** | v1 + coeficiente de club UEFA: `ataque = β·log(coeficiente) + desvío del club`. Un club que debuta parte de lo que predice su coeficiente y no de un equipo promedio. |
+| **Dixon-Coles v3** | v2 entrenado también con las 5 grandes ligas (desde 2015-16): cada club tiene una sola fuerza para la Champions y su liga, con nivel de goles y ventaja de local por competición. Un club sin coeficiente UEFA parte del piso de su asociación. |
 | **Elo UCL** | Elo con margen de goles y regresión a la media entre temporadas + logit ordenado para pasar de diferencia de Elo a probabilidades 1X2. |
 
 **Evaluación sin leakage.** Backtest *walk-forward*: cada día de partidos se
@@ -97,15 +98,21 @@ pronostica entrenando solo con lo jugado antes. Los hiperparámetros se eligen c
 | Frecuencia histórica (baseline) | 1,022 | 0,617 | 49,7 % |
 | Elo UCL | 0,942 | 0,556 | 57,3 % |
 | Dixon-Coles v1 | 0,935 | 0,551 | 57,9 % |
-| **Dixon-Coles v2** | **0,929** | **0,548** | **58,3 %** |
+| Dixon-Coles v2 | 0,929 | 0,548 | 58,3 % |
+| **Dixon-Coles v3** | **0,924** | **0,544** | **59,1 %** |
+
+La v3 mejora a la v2 en 2023-24 y 2024-25, pero no en 2025-26; en total la
+diferencia (-0,004, IC 95 % -0,022 a +0,014) todavía no es estadísticamente
+significativa.
 
 **Contra el mercado.** Frente a la cuota de cierre de ESPN BET sin margen (método
 de Shin, 297 partidos de 2024-26), el mercado tiene log loss 0,877: v2 queda
-0,050 por encima (IC 95 % +0,017 a +0,081). El mercado incorpora alineaciones y
-forma en la liga local, información que estos modelos todavía no tienen.
+0,050 por encima (IC 95 % +0,017 a +0,081) y v3, 0,045. El mercado incorpora
+alineaciones y lesiones, información que estos modelos no tienen. En las ligas
+(5.256 partidos, 2023-26) la v3 da 0,985 contra 0,963 del cierre promedio.
 
-**En vivo.** Desde la J4 de 2026-27 se publican los pronósticos de Dixon-Coles v2
-y Elo antes de cada partido (`gold.f_pronostico`, `es_backtest = FALSE`). Un
+**En vivo.** Desde la J4 de 2026-27 se publican los pronósticos de Dixon-Coles v2,
+v3 y Elo antes de cada partido (`gold.f_pronostico`, `es_backtest = FALSE`). Un
 pronóstico en vivo no se modifica después del inicio.
 
 ## Hallazgos
@@ -122,10 +129,10 @@ pronóstico en vivo no se modifica después del inicio.
 
 ## Limitaciones y próximos pasos
 
-- Los modelos solo ven partidos de Champions. Las 5 grandes ligas ya están
-  cargadas (desde 2012-13); el próximo paso (v3) es ajustarlas junto con la
-  Champions, para medir la forma de cada club en su liga y pronosticar también
-  esos partidos.
+- Solo la v3 ve las ligas, y solo las 5 grandes: los clubes de otras ligas
+  (Portugal, Países Bajos, Turquía...) siguen dependiendo de los partidos de
+  Champions y de su coeficiente. Próximo paso: publicar también pronósticos de
+  los partidos de liga.
 - En partidos muy desparejos los modelos son más extremos que el mercado; falta
   calibrar ese tramo.
 - Las cuotas de ESPN no tienen fecha de la línea de cierre: no se puede descartar

@@ -109,8 +109,7 @@ def cierre_ligas(casa):
 def fila(p, modelo, pred):
     return {"comp": p["comp"], "id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
             "local": p["local"], "visita": p["visita"], "goles_local_90": p["goles_local_90"],
-            "goles_visita_90": p["goles_visita_90"], "resultado": resultado(p), "modelo": modelo,
-            **{k: pred[k] for k in ("prob_local", "prob_empate", "prob_visita")}}
+            "goles_visita_90": p["goles_visita_90"], "resultado": resultado(p), "modelo": modelo, **pred}
 
 
 def walk_forward_ucl(todos, temporadas, vida, reg, con_v2=True):
@@ -178,7 +177,8 @@ def agregar_mercado(filas, cuotas, clave_de, sufijo):
             vistos.add((f["comp"], f["fecha"], f["local"], f["visita"]))
             for nombre, fn in (("MERCADO_PROP", sin_margen_proporcional), ("MERCADO_SHIN", sin_margen_shin)):
                 p = fn(cuotas[k])
-                nuevas.append({**f, "modelo": f"{nombre}_{sufijo}",
+                nuevas.append({**f, "modelo": f"{nombre}_{sufijo}", "goles_esp_local": None,
+                               "goles_esp_visita": None, "prob_over_2_5": None,
                                "prob_local": p[0], "prob_empate": p[1], "prob_visita": p[2]})
     return nuevas
 

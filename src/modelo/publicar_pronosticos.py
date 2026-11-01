@@ -33,14 +33,16 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from backtest import EloUCL, leer_partidos, metricas, walk_forward
-from coeficientes import anotar, leer_coeficientes
+from backtest_ligas import PAIS_LIGA, PRIMERA_TEMPORADA_LIGA, leer_ligas, walk_forward_ucl
+from coeficientes import anotar, anotar_conjunto, leer_coeficientes, leer_pisos
 from dixon_coles import DixonColes
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-# Elegidos con la temporada de validación 2022-23 (src/modelo/backtest.py)
+# Elegidos con la temporada de validación 2022-23 (src/modelo/backtest.py y backtest_ligas.py)
 VIDA_MEDIA_DIAS, REG, K_ELO = 365, 1.0, 30
 VIDA_MEDIA_DIAS_COEF, REG_COEF = 365, 2.0
+VIDA_MEDIA_DIAS_LIGAS, REG_LIGAS = 365, 2.0
 
 MODELOS = {
     "DIXON_COLES": ("Dixon-Coles", "v1", "DIXON_COLES",
@@ -52,10 +54,14 @@ MODELOS = {
     "ELO_UCL": ("Elo UCL", "v1", "ELO",
                 "Elo solo con partidos UCL (margen de goles, regresión entre temporadas) + "
                 "logit ordenado sobre la diferencia de Elo."),
+    "DIXON_COLES_LIGAS": ("Dixon-Coles", "v3", "DIXON_COLES",
+                          "Dixon-Coles v2 entrenado también con las 5 grandes ligas (desde 2015-16): la misma "
+                          "fuerza por club en la UCL y en su liga, con nivel de goles y ventaja de local por "
+                          "competición; un club sin coeficiente parte del piso de su asociación."),
 }
-# En vivo desde la J4 2026-27: v2 y Elo lado a lado con el mercado
+# En vivo desde la J4 2026-27: v2, v3 y Elo lado a lado con el mercado
 # (gold.vw_pronostico_vs_mercado). La v1 exageraba con los debutantes: solo backtest.
-MODELOS_EN_VIVO = {"DIXON_COLES_COEF", "ELO_UCL"}
+MODELOS_EN_VIVO = {"DIXON_COLES_COEF", "DIXON_COLES_LIGAS", "ELO_UCL"}
 COLUMNAS = ["prob_local", "prob_empate", "prob_visita", "goles_esp_local", "goles_esp_visita", "prob_over_2_5"]
 
 
@@ -78,13 +84,48 @@ def leer_postgres(cx):
     return partidos
 
 
-def pronosticos(partidos, desde_temporada, en_vivo):
+def leer_ligas_postgres(cx):
+    """Partidos de liga jugados (v3) y el país de cada club de liga."""
+    filas = cx.execute("""
+        SELECT pl.id_liga, pl.temporada, pl.fecha, l.nombre_canonico, v.nombre_canonico,
+               pl.goles_local_90, pl.goles_visita_90, d.pais_iso3
+        FROM gold.f_partido_liga pl
+        JOIN gold.d_liga d ON d.id_liga = pl.id_liga
+        JOIN gold.d_equipo l ON l.id_equipo = pl.id_equipo_local
+        JOIN gold.d_equipo v ON v.id_equipo = pl.id_equipo_visita
+        WHERE pl.estado = 'JUGADO'""").fetchall()
+    ligas, pais_de = [], {}
+    for comp, t, fecha, local, visita, gl, gv, pais in filas:
+        pais_de.setdefault(local, pais)
+        pais_de.setdefault(visita, pais)
+        if t >= PRIMERA_TEMPORADA_LIGA:
+            ligas.append({"comp": comp, "id_temporada": int(t), "id_ronda": None,
+                          "fecha": fecha if isinstance(fecha, date) else date.fromisoformat(str(fecha)),
+                          "local": local, "visita": visita, "es_neutral": False, "jugado": True,
+                          "goles_local_90": gl, "goles_visita_90": gv})
+    return ligas, pais_de
+
+
+def conjunto_v3(partidos, ligas, pais_de, coefs, pisos):
+    """Partidos UCL (jugados y programados) + ligas con el x de la v3. Copias: no toca el x de la v2."""
+    ucl = [{**p, "comp": "UCL"} for p in partidos]
+    todos = sorted(ucl + [dict(p) for p in ligas], key=lambda p: (p["fecha"], p["comp"], p["local"]))
+    anotar_conjunto(todos, coefs, pisos, pais_de)
+    return todos
+
+
+def pronosticos(partidos, desde_temporada, en_vivo, todos_v3=None):
     jugados = [p for p in partidos if p["jugado"]]
     temporadas = sorted({p["id_temporada"] for p in jugados if p["id_temporada"] >= desde_temporada})
 
     # 1) Backtest walk-forward
     filas_bt, _ = walk_forward(partidos, set(temporadas), VIDA_MEDIA_DIAS, REG, K_ELO,
                                VIDA_MEDIA_DIAS_COEF, REG_COEF)
+    if todos_v3:
+        jugados_v3 = [p for p in todos_v3 if p["jugado"]]
+        filas_v3, _ = walk_forward_ucl(jugados_v3, set(temporadas), VIDA_MEDIA_DIAS_LIGAS, REG_LIGAS,
+                                       con_v2=False)
+        filas_bt += filas_v3
     salida = []
     for f in filas_bt:
         if f["modelo"] not in MODELOS:
@@ -109,18 +150,30 @@ def pronosticos(partidos, desde_temporada, en_vivo):
                                                        p["x_local"], p["x_visita"]),
             "ELO_UCL": elo.predecir,
         }
+        hasta = {m: hoy for m in MODELOS_EN_VIVO}
+        if todos_v3:
+            # La v3 entrena hasta el último partido jugado, sea de UCL o de liga (fin de semana incluido)
+            jugados_v3 = [p for p in todos_v3 if p["jugado"]]
+            hoy_v3 = max(p["fecha"] for p in jugados_v3)
+            dc3 = DixonColes(vida_media_dias=VIDA_MEDIA_DIAS_LIGAS, reg=REG_LIGAS,
+                             ventana_dias=4 * VIDA_MEDIA_DIAS_LIGAS).ajustar(jugados_v3, hoy_v3)
+            x_v3 = {(p["fecha"], p["local"], p["visita"]): (p["x_local"], p["x_visita"])
+                    for p in todos_v3 if p["comp"] == "UCL"}
+            predictores["DIXON_COLES_LIGAS"] = lambda p: dc3.predecir(
+                p["local"], p["visita"], p["es_neutral"], *x_v3[(p["fecha"], p["local"], p["visita"])])
+            hasta["DIXON_COLES_LIGAS"] = hoy_v3
         for p in por_empezar:
             base = {"id_temporada": p["id_temporada"], "fecha": p["fecha"].isoformat(),
-                    "local": p["local"], "visita": p["visita"], "es_backtest": False, "datos_hasta": hoy.isoformat()}
-            for m in sorted(MODELOS_EN_VIVO):
-                salida.append({**base, "modelo": m, **predictores[m](p)})
+                    "local": p["local"], "visita": p["visita"], "es_backtest": False}
+            for m in sorted(MODELOS_EN_VIVO & set(predictores)):
+                salida.append({**base, "modelo": m, "datos_hasta": hasta[m].isoformat(), **predictores[m](p)})
 
     # Métricas del período de prueba (temporadas del backtest ya terminadas)
     en_curso = {p["id_temporada"] for p in programados}
     prueba = [t for t in temporadas if t not in en_curso]
     met = {m: {"temporadas_prueba": prueba,
                "prueba": metricas([f for f in filas_bt if f["modelo"] == m and f["id_temporada"] in prueba])}
-           for m in MODELOS}
+           for m in MODELOS if any(f["modelo"] == m for f in filas_bt)}
     return salida, met
 
 
@@ -129,6 +182,8 @@ def escribir_postgres(cx, salida, met, partidos):
     id_partido = {(p["fecha"].isoformat(), p["local"], p["visita"]): p["id_partido"] for p in partidos}
     id_modelo = {}
     for clave, (nombre, version, algoritmo, descripcion) in MODELOS.items():
+        if clave not in met:
+            continue
         id_modelo[clave] = cx.execute(
             """INSERT INTO gold.d_modelo (nombre, version, algoritmo, temporadas_train, entrenado_en,
                                           metricas_validacion, descripcion)
@@ -141,7 +196,9 @@ def escribir_postgres(cx, salida, met, partidos):
              json.dumps({**met[clave], "hiperparametros": {"vida_media_dias": VIDA_MEDIA_DIAS, "reg": REG,
                                                             "k_elo": K_ELO,
                                                             "vida_media_dias_coef": VIDA_MEDIA_DIAS_COEF,
-                                                            "reg_coef": REG_COEF}}), descripcion)).fetchone()[0]
+                                                            "reg_coef": REG_COEF,
+                                                            "vida_media_dias_ligas": VIDA_MEDIA_DIAS_LIGAS,
+                                                            "reg_ligas": REG_LIGAS}}), descripcion)).fetchone()[0]
 
     sql = f"""
         INSERT INTO gold.f_pronostico (id_partido, id_modelo, generado_en, {", ".join(COLUMNAS)}, es_backtest, datos_hasta)
@@ -171,10 +228,16 @@ def main():
         import psycopg
         cx = psycopg.connect(url_bd)
         partidos = leer_postgres(cx)
+        ligas, pais_de = leer_ligas_postgres(cx)
+        coefs, pisos = leer_coeficientes(cx), leer_pisos(cx)
     else:
         partidos = leer_partidos()
+        ligas, pais_de = leer_ligas() if (RAIZ / "data" / "silver" / "football_data_partidos.csv").exists() else ([], {})
+        coefs, pisos = leer_coeficientes(), leer_pisos()
 
-    salida, met = pronosticos(partidos, args.desde_temporada, args.en_vivo)
+    # Sin partidos de liga cargados la v3 no se publica (sería igual a la v2)
+    todos_v3 = conjunto_v3(partidos, ligas, pais_de, coefs, pisos) if ligas else None
+    salida, met = pronosticos(partidos, args.desde_temporada, args.en_vivo, todos_v3)
     n_bt = sum(f["es_backtest"] for f in salida)
     print(f"Pronósticos: {n_bt} de backtest, {len(salida) - n_bt} en vivo")
     for m, d in met.items():

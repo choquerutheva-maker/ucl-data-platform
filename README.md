@@ -75,7 +75,7 @@ flowchart LR
 | `carga-espn-resultados` | daily 03:30 UTC | Results and fixtures → standings → forecasts (backtest and live) |
 | `carga-uefa-coeficientes` | manual, once per season | UEFA club coefficient used for each season's draw |
 | `carga-nike-pronosticos` | on push of a CSV to `entradas/nike/` | Niké's forecasts, flagged as late if they arrive after kickoff |
-| `carga-football-data` | daily 06:00 UTC | Premier League, LaLiga, Bundesliga, Serie A and Ligue 1: current season and upcoming fixtures (manual: history from 2012-13) |
+| `carga-football-data` | daily 03:00 UTC | Premier League, LaLiga, Bundesliga, Serie A and Ligue 1: current season and upcoming fixtures (manual: history from 2012-13) |
 | `carga-openfootball` | manual | History 2015-16 .. 2025-26 |
 | `calcula-tabla-posiciones` | manual | Recomputes the standings of any season |
 
@@ -87,6 +87,7 @@ Every pipeline is idempotent: it can be re-run without duplicating data.
 |---|---|
 | **Dixon-Coles v1** | Bivariate Poisson with the τ correction for low scores; attack and defence per club with L2 regularization and time decay (365-day half-life). UCL matches only, 90' results. |
 | **Dixon-Coles v2** | v1 + UEFA club coefficient: `attack = β·log(coefficient) + club deviation`. A debutant club starts from what its coefficient predicts instead of an average team. |
+| **Dixon-Coles v3** | v2 also trained on the top 5 domestic leagues (from 2015-16): each club has one strength shared between the Champions League and its league, with goal level and home advantage per competition. Clubs without a UEFA coefficient start from their association's floor. |
 | **Elo UCL** | Elo with goal margin and regression to the mean between seasons, plus an ordered logit to turn Elo differences into 1X2 probabilities. |
 
 **No leakage.** Walk-forward backtest: each matchday is forecast training only on
@@ -98,14 +99,20 @@ matches played before it. Hyperparameters are tuned on 2022-23 and the test set 
 | Historical frequency (baseline) | 1.022 | 0.617 | 49.7% |
 | Elo UCL | 0.942 | 0.556 | 57.3% |
 | Dixon-Coles v1 | 0.935 | 0.551 | 57.9% |
-| **Dixon-Coles v2** | **0.929** | **0.548** | **58.3%** |
+| Dixon-Coles v2 | 0.929 | 0.548 | 58.3% |
+| **Dixon-Coles v3** | **0.924** | **0.544** | **59.1%** |
+
+v3 improves on v2 in 2023-24 and 2024-25 but not in 2025-26; overall the difference
+(-0.004, 95% CI -0.022 to +0.014) is not statistically significant yet.
 
 **Against the market.** Compared with ESPN BET closing odds with the margin removed
 (Shin's method, 297 matches from 2024-26), the market scores a log loss of 0.877:
-v2 is 0.050 higher (95% CI +0.017 to +0.081). The market knows line-ups and
-domestic form, information these models don't have yet.
+v2 is 0.050 higher (95% CI +0.017 to +0.081) and v3 0.045 higher. The market
+knows line-ups and injuries, information these models don't have. In the domestic
+leagues (5,256 matches, 2023-26) v3 scores 0.985 against 0.963 for the average
+closing odds.
 
-**Live.** Since matchday 4 of 2026-27, Dixon-Coles v2 and Elo forecasts are
+**Live.** Since matchday 4 of 2026-27, Dixon-Coles v2, v3 and Elo forecasts are
 published before every match (`gold.f_pronostico`, `es_backtest = FALSE`). A live
 forecast is never modified after kickoff.
 
@@ -123,9 +130,9 @@ forecast is never modified after kickoff.
 
 ## Limitations and next steps
 
-- The models only see Champions League matches. The top 5 leagues are already
-  loaded (2012-13 onwards); the next step (v3) is fitting them together with the
-  Champions League, to capture each club's domestic form and forecast those matches too.
+- Only v3 sees domestic leagues, and only the top 5: clubs from other leagues
+  (Portugal, the Netherlands, Turkey...) still rely on Champions League matches and
+  their coefficient. Next step: publish forecasts for the league matches too.
 - In very lopsided matches the models are more extreme than the market; that range
   still needs calibration.
 - ESPN odds don't carry a timestamp for the closing line, so it can't be fully

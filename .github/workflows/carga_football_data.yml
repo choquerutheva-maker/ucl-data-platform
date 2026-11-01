@@ -1,11 +1,12 @@
 # Ligas nacionales (Premier, LaLiga, Bundesliga, Serie A, Ligue 1) desde
-# football-data.co.uk. Diario: temporada actual + próximos partidos.
+# football-data.co.uk. Diario (03:00 UTC, antes de la publicación de pronósticos
+# de las 03:30): temporada actual + próximos partidos.
 # Manual: cualquier rango de temporadas (histórico desde 2012). Idempotente.
 name: carga-football-data
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       temporadas:
