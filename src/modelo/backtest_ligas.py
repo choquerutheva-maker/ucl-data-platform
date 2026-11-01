@@ -55,13 +55,13 @@ DIAS_REAJUSTE_LIGA = 7
 # -----------------------------------------------------------------------------
 # Datos
 # -----------------------------------------------------------------------------
-def leer_ligas():
+def leer_ligas(desde=PRIMERA_TEMPORADA_LIGA):
     partidos, pais_de = [], {}
     with (RAIZ / "data" / "silver" / "football_data_partidos.csv").open(encoding="utf-8") as f:
         for r in csv.DictReader(f):
             pais_de.setdefault(r["local"], PAIS_LIGA[r["id_liga"]])
             pais_de.setdefault(r["visita"], PAIS_LIGA[r["id_liga"]])
-            if r["estado"] != "JUGADO" or int(r["temporada"]) < PRIMERA_TEMPORADA_LIGA:
+            if r["estado"] != "JUGADO" or int(r["temporada"]) < desde:
                 continue
             partidos.append({
                 "comp": r["id_liga"], "id_temporada": int(r["temporada"]), "id_ronda": None,
@@ -72,14 +72,14 @@ def leer_ligas():
     return partidos, pais_de
 
 
-def leer_todo():
+def leer_todo(desde_liga=PRIMERA_TEMPORADA_LIGA, con_pais=False):
     ucl = [p for p in leer_partidos() if p["jugado"]]
     for p in ucl:
         p["comp"] = "UCL"
-    ligas, pais_de = leer_ligas()
+    ligas, pais_de = leer_ligas(desde_liga)
     todos = sorted(ucl + ligas, key=lambda p: (p["fecha"], p["comp"], p["local"]))
     anotar_conjunto(todos, leer_coeficientes(), leer_pisos(), pais_de)
-    return todos
+    return (todos, pais_de) if con_pais else todos
 
 
 def leer_csv(nombre):
