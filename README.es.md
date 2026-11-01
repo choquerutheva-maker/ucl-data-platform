@@ -100,7 +100,7 @@ pronostica entrenando solo con lo jugado antes. Los hiperparámetros se eligen c
 | Elo UCL | 0,942 | 0,556 | 57,3 % |
 | Dixon-Coles v1 | 0,935 | 0,551 | 57,9 % |
 | Dixon-Coles v2 | 0,929 | 0,548 | 58,3 % |
-| Dixon-Coles v3 | 0,924 | 0,544 | 59,1 % |
+| Dixon-Coles v3 | 0,924 | 0,544 | 59,0 % |
 | Elo propio | 0,923 | 0,543 | 57,3 % |
 
 La v3 mejora a la v2 en 2023-24 y 2024-25, pero no en 2025-26; en total la

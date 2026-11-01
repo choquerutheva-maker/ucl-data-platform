@@ -101,7 +101,7 @@ matches played before it. Hyperparameters are tuned on 2022-23 and the test set 
 | Elo UCL | 0.942 | 0.556 | 57.3% |
 | Dixon-Coles v1 | 0.935 | 0.551 | 57.9% |
 | Dixon-Coles v2 | 0.929 | 0.548 | 58.3% |
-| Dixon-Coles v3 | 0.924 | 0.544 | 59.1% |
+| Dixon-Coles v3 | 0.924 | 0.544 | 59.0% |
 | Elo propio | 0.923 | 0.543 | 57.3% |
 
 v3 improves on v2 in 2023-24 and 2024-25 but not in 2025-26; overall the difference
