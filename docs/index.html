@@ -196,6 +196,7 @@
   .shape.circle { border-radius: 50%; }
   .shape.diamond { transform: rotate(45deg) scale(.85); border-radius: 1px; }
   .shape.triangle { clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 11px; height: 11px; }
+  .shape.diamond-o { transform: rotate(45deg) scale(.8); border-radius: 1px; background: transparent; border: 2px solid var(--muted); }
   .shape.ring { border-radius: 50%; background: transparent; border: 2px solid var(--muted); }
   .shape.square { border-radius: 1px; background: var(--muted); }
   .shape.ref { border-radius: 50%; background: var(--muted); }
@@ -393,7 +394,7 @@
     <div class="hero-graphic" id="hero-graphic" hidden></div>
   </div>
   <div class="proof-strip" id="proof">
-    <div><b>3 modelos</b><span>Dixon-Coles v2, Dixon-Coles v3 y Elo UCL v1</span></div>
+    <div><b>3 modelos</b><span>Dixon-Coles v2, Dixon-Coles v3 y Elo propio v1</span></div>
     <div><b id="proof-n">—</b><span>Backtest 2023/24–2025/26</span></div>
     <div><b>Sin mirar al futuro</b><span>Evaluación walk-forward</span></div>
   </div>
@@ -432,7 +433,7 @@
       <li><span class="sw v"></span>Visita</li>
       <li><span class="shape circle"></span>Dixon-Coles v2</li>
       <li><span class="shape triangle"></span>Dixon-Coles v3</li>
-      <li><span class="shape diamond"></span>Elo UCL v1</li>
+      <li><span class="shape diamond"></span>Elo propio v1</li>
     </ul>
     <div id="matches" aria-busy="true">
       <div class="grid"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>
@@ -500,7 +501,8 @@
       <article>
         <span class="step">02 / ESTIMAR</span>
         <h3>Dos enfoques distintos</h3>
-        <p>Dixon-Coles modela los goles de cada equipo; Elo UCL resume la fuerza relativa en una calificación. Ambos dan probabilidades de local, empate y visita; sus diferencias se muestran como información, no como recomendación.</p>
+        <p>Dixon-Coles modela los goles de cada equipo; Elo resume la fuerza relativa en una calificación. Ambos dan probabilidades de local, empate y visita; sus diferencias se muestran como información, no como recomendación.</p>
+        <p>Elo propio: calculado por este proyecto (no es ClubElo) con las 5 grandes ligas y la Champions.</p>
         <p>Dixon-Coles v3 suma las 5 grandes ligas: la forma de cada club en su liga también cuenta.</p>
         <a href="https://github.com/choquerutheva-maker/ucl-data-platform/blob/main/README.es.md#modelos" rel="noopener">Modelos ↗</a>
       </article>
@@ -551,8 +553,9 @@ const MARKET_SUBSET = {
     ["Mercado (cierre ESPN BET, sin margen)", 0.877, "square", true],
     ["Dixon-Coles v3", 0.922, "triangle", false],
     ["Dixon-Coles v2", 0.926, "circle", false],
+    ["Elo propio v1", 0.928, "diamond", false],
     ["Dixon-Coles v1", 0.939, "ring", false],
-    ["Elo UCL v1", 0.950, "diamond", false],
+    ["Elo UCL v1", 0.950, "diamond-o", false],
   ],
 };
 const BACKTEST_SEASONS = [2023, 2024, 2025];
@@ -561,11 +564,12 @@ const DISAGREE_MIN = 0.15; // max absolute gap between Dixon-Coles v2 and Elo (v
 const MODELS = {
   "Dixon-Coles v2": { shape: "circle", live: true },
   "Dixon-Coles v3": { shape: "triangle", live: true },
-  "Elo UCL v1": { shape: "diamond", live: true },
+  "Elo propio v1": { shape: "diamond", live: true },
   "Dixon-Coles v1": { shape: "ring", live: false, note: "solo backtest" },
+  "Elo UCL v1": { shape: "diamond-o", live: false, note: "solo backtest" },
 };
-const MODEL_ORDER = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo UCL v1", "Dixon-Coles v1"];
-const LIVE_MODELS = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo UCL v1"];
+const MODEL_ORDER = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo propio v1", "Dixon-Coles v1", "Elo UCL v1"];
+const LIVE_MODELS = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo propio v1"];
 
 // Standings bands: provisional wording until es_posicion_final
 const BANDS = {
@@ -783,7 +787,7 @@ function modelBlock(m, k, r, isPlayed) {
 }
 
 function disagreement(models) {
-  const a = models["Dixon-Coles v2"], b = models["Elo UCL v1"];
+  const a = models["Dixon-Coles v2"], b = models["Elo propio v1"];
   if (!a || !b) return "";
   const lab = { prob_local: "victoria local", prob_empate: "empate", prob_visita: "victoria visitante" };
   const [k, gap] = Object.keys(lab).map((k) => [k, Math.abs(a[k] - b[k])]).sort((x, y) => y[1] - x[1])[0];
@@ -792,7 +796,7 @@ function disagreement(models) {
 }
 
 function details(m, models) {
-  const dc = models["Dixon-Coles v2"], dc3 = models["Dixon-Coles v3"], elo = models["Elo UCL v1"];
+  const dc = models["Dixon-Coles v2"], dc3 = models["Dixon-Coles v3"], elo = models["Elo propio v1"];
   const sL = m.nombre_corto_local || m.local, sV = m.nombre_corto_visita || m.visita;
   const xg = (r) => r && r.goles_esp_local != null
     ? `${esc(sL)} ${num(r.goles_esp_local, 2)} · ${esc(sV)} ${num(r.goles_esp_visita, 2)}` : NA;
@@ -806,7 +810,7 @@ function details(m, models) {
         <dl>
           ${dc ? `<dt>Dixon-Coles v2</dt><dd>Goles esperados: ${xg(dc)}<br>Probabilidad de 3 o más goles: ${pct(dc.prob_over_2_5)}</dd>` : ""}
           ${dc3 ? `<dt>Dixon-Coles v3</dt><dd>Goles esperados: ${xg(dc3)}<br>Probabilidad de 3 o más goles: ${pct(dc3.prob_over_2_5)}</dd>` : ""}
-          ${elo ? `<dt>Elo UCL v1</dt><dd>Goles esperados: ${xg(elo)}<br>Probabilidad de 3 o más goles: ${pct(elo.prob_over_2_5)}<br><small>Elo solo estima local, empate y visita.</small></dd>` : ""}
+          ${elo ? `<dt>Elo propio v1</dt><dd>Goles esperados: ${xg(elo)}<br>Probabilidad de 3 o más goles: ${pct(elo.prob_over_2_5)}<br><small>Elo solo estima local, empate y visita.</small></dd>` : ""}
           <dt>Datos hasta</dt><dd>${cut.length ? cut.map((c) => esc(fmtDate.format(localDate(c)))).join(" / ") : NA}</dd>
           <dt>Nombres</dt><dd>${esc(m.local)} – ${esc(m.visita)}</dd>
         </dl>
@@ -1050,7 +1054,7 @@ async function loadEval() {
         <p class="big">${pct(dc?.acierto, 1)}</p>
         <p style="margin-top:4px">Acierto de Dixon-Coles v2 en el backtest: el resultado más probable coincidió con el real.</p>
         <p>Pero un modelo puede acertar el resultado más probable y aun así asignar probabilidades poco fiables. El <b>log loss</b> mide la calidad de las probabilidades: <b>menor es mejor; 1,10 = adivinar al azar</b>. Penaliza sobre todo los errores cometidos con mucha confianza.</p>
-        <p class="sample">Las diferencias pequeñas entre modelos no demuestran por sí solas que uno sea superior.${agg["Dixon-Coles v3"] ? " Por ejemplo, Dixon-Coles v3 tiene un log loss 0,004 menor que v2, pero la diferencia todavía no es estadísticamente significativa (IC 95 %: −0,022 a +0,014)." : ""}</p>
+        <p class="sample">Las diferencias pequeñas entre modelos no demuestran por sí solas que uno sea superior.${agg["Dixon-Coles v3"] ? " Por ejemplo, Dixon-Coles v3 tiene un log loss 0,004 menor que v2, pero la diferencia todavía no es estadísticamente significativa (IC 95 %: −0,022 a +0,014)." : ""}${agg["Elo propio v1"] && agg["Elo UCL v1"] ? " Elo propio frente a Elo UCL: −0,019 (IC 95 %: −0,042 a +0,007), tampoco significativa." : ""}</p>
       </aside>
     </div>
 
@@ -1091,6 +1095,7 @@ async function loadEval() {
 function svgShape(shp, cx, cy, r = 6) {
   if (shp === "diamond") return `<rect x="${cx - r * 0.75}" y="${cy - r * 0.75}" width="${r * 1.5}" height="${r * 1.5}" transform="rotate(45 ${cx} ${cy})" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
   if (shp === "triangle") return `<polygon points="${cx},${cy - r * 1.1} ${cx + r},${cy + r * 0.75} ${cx - r},${cy + r * 0.75}" fill="var(--text)" stroke="var(--panel)" stroke-width="1.5"/>`;
+  if (shp === "diamond-o") return `<rect x="${cx - r * 0.65}" y="${cy - r * 0.65}" width="${r * 1.3}" height="${r * 1.3}" transform="rotate(45 ${cx} ${cy})" fill="var(--panel)" stroke="var(--muted)" stroke-width="2"/>`;
   if (shp === "ring") return `<circle cx="${cx}" cy="${cy}" r="${r - 1.5}" fill="var(--panel)" stroke="var(--muted)" stroke-width="2"/>`;
   return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--text)" stroke="var(--panel)" stroke-width="2"/>`;
 }
@@ -1143,7 +1148,7 @@ function renderSeasonChart() {
 function renderLive(rows) {
   const box = $("live");
   if (!rows.length) {
-    box.innerHTML = `<div class="empty"><strong>Evaluación en vivo aún no disponible</strong>Los pronósticos en vivo empiezan con la jornada 4 (3 y 4 de noviembre). Cuando se jueguen los partidos, aquí aparecerán el log loss y el acierto de Dixon-Coles v2, Dixon-Coles v3 y Elo UCL v1.</div>`;
+    box.innerHTML = `<div class="empty"><strong>Evaluación en vivo aún no disponible</strong>Los pronósticos en vivo empiezan con la jornada 4 (3 y 4 de noviembre). Cuando se jueguen los partidos, aquí aparecerán el log loss y el acierto de Dixon-Coles v2, Dixon-Coles v3 y Elo propio v1.</div>`;
     return;
   }
   box.innerHTML = `<div class="panel">${LIVE_MODELS.filter((m) => rows.some((r) => r.modelo === m)).map((m) => {
