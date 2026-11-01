@@ -7,6 +7,13 @@ Modelo Dixon-Coles (1997) para pronósticos 1X2 de la Champions League.
     ataque[e]  = βa·x[e] + δa[e]      x = log(coeficiente UEFA) centrado por temporada
     defensa[e] = βd·x[e] + δd[e]      (v2; con x = 0 es exactamente la v1)
 
+  - v3 (ligas): cada partido trae su competición ("comp"; UCL por defecto). La
+    fuerza del club (δa, δd) es la misma en todas; cada liga suma su propio
+    nivel de goles μ_c y su ventaja de local H_c sobre los de la UCL. Sin
+    partidos de liga es exactamente la v2.
+  - ventana_dias: descarta partidos más viejos que eso (pesan casi 0 y
+    alargan el ajuste cuando entran las ligas).
+
   - Ponderación temporal: cada partido pesa exp(-ln2 · días / vida_media).
   - Regularización L2 en los desvíos δ (β sin penalizar): un club con pocos
     partidos se acerca a lo que predice su coeficiente UEFA; en la v1 (sin x)
@@ -14,9 +21,10 @@ Modelo Dixon-Coles (1997) para pronósticos 1X2 de la Champions League.
   - Corrección τ de Dixon-Coles para 0-0, 1-0, 0-1 y 1-1 (parámetro ρ), ajustada
     en una segunda etapa con λ y γ fijos.
 
-Solo usa resultados a los 90' (gold.f_partido.goles_*_90).
+Solo usa resultados a los 90' (gold.f_partido / gold.f_partido_liga, goles_*_90).
 
-Autor : Ruth Choque (con PROMETHEUS) · 2026-10-22 (v2 con coeficiente UEFA: 2026-10-26)
+Autor : Ruth Choque (con PROMETHEUS) · 2026-10-22 (v2 con coeficiente UEFA: 2026-10-26;
+        v3 con ligas nacionales: 2026-10-31)
 """
 
 from dataclasses import dataclass, field
@@ -26,6 +34,7 @@ from scipy.optimize import minimize, minimize_scalar
 
 MAX_GOLES = 10
 N_FIJOS = 4                                           # μ, H, βa, βd
+COMP_BASE = "UCL"
 
 
 @dataclass
@@ -33,9 +42,15 @@ class DixonColes:
     vida_media_dias: float = 365.0
     reg: float = 2.0
     usa_coef: bool = True                             # False = v1 (ignora x_local / x_visita)
+    ventana_dias: float | None = None
     equipos: dict = field(default_factory=dict)      # nombre -> índice
-    params: np.ndarray | None = None                  # [μ, H, βa, βd, δa..., δd...]
+    comps: list = field(default_factory=list)        # competiciones distintas de la UCL
+    params: np.ndarray | None = None                  # [μ, H, βa, βd, μ_c..., H_c..., δa..., δd...]
     rho: float = 0.0
+
+    @property
+    def _k(self):
+        return N_FIJOS + 2 * len(self.comps)            # posición donde empiezan los δ
 
     # ------------------------------------------------------------------
     def _indices(self, partidos):
@@ -47,19 +62,30 @@ class DixonColes:
         iv = np.array([self.equipos[p["visita"]] for p in partidos])
         return il, iv
 
-    def _tasas(self, params, il, iv, local_real, xl, xv):
-        n = len(self.equipos)
+    def _tasas(self, params, il, iv, local_real, xl, xv, ic):
+        n, nc, k = len(self.equipos), len(self.comps), self._k
         mu, h, ba, bd = params[:N_FIJOS]
-        ata, dfn = params[N_FIJOS:N_FIJOS + n], params[N_FIJOS + n:N_FIJOS + 2 * n]
-        eta1 = mu + ba * xl + ata[il] - bd * xv - dfn[iv] + h * local_real
-        eta2 = mu + ba * xv + ata[iv] - bd * xl - dfn[il]
+        mu_c = np.r_[params[N_FIJOS:N_FIJOS + nc], 0.0][ic]          # ic = nc para la UCL
+        h_c = np.r_[params[N_FIJOS + nc:k], 0.0][ic]
+        ata, dfn = params[k:k + n], params[k + n:k + 2 * n]
+        eta1 = mu + mu_c + ba * xl + ata[il] - bd * xv - dfn[iv] + (h + h_c) * local_real
+        eta2 = mu + mu_c + ba * xv + ata[iv] - bd * xl - dfn[il]
         return np.exp(eta1), np.exp(eta2)
 
     def ajustar(self, partidos, fecha_ref):
         """partidos: dicts con local, visita, goles_local_90, goles_visita_90, es_neutral, fecha (date)
-        y opcionalmente x_local / x_visita (log coeficiente centrado; 0 si falta)."""
+        y opcionalmente x_local / x_visita (log coeficiente centrado; 0 si falta) y comp."""
+        if self.ventana_dias:
+            partidos = [p for p in partidos if (fecha_ref - p["fecha"]).days <= self.ventana_dias]
+        comps = sorted({p.get("comp", COMP_BASE) for p in partidos} - {COMP_BASE})
+        if comps != self.comps:
+            self.params = None                          # cambió la estructura: sin arranque en caliente
+        self.comps = comps
+        nc, k = len(comps), self._k
         il, iv = self._indices(partidos)
         n = len(self.equipos)
+        ic = np.array([comps.index(p["comp"]) if p.get("comp", COMP_BASE) != COMP_BASE else nc
+                       for p in partidos])
         x = np.array([p["goles_local_90"] for p in partidos], dtype=float)
         y = np.array([p["goles_visita_90"] for p in partidos], dtype=float)
         local_real = np.array([0.0 if p["es_neutral"] else 1.0 for p in partidos])
@@ -69,9 +95,9 @@ class DixonColes:
         w = np.exp(-np.log(2) * dias / self.vida_media_dias)
 
         def objetivo(theta):
-            l1, l2 = self._tasas(theta, il, iv, local_real, xl, xv)
+            l1, l2 = self._tasas(theta, il, iv, local_real, xl, xv, ic)
             nll = np.sum(w * (l1 - x * np.log(l1) + l2 - y * np.log(l2)))
-            ata, dfn = theta[N_FIJOS:N_FIJOS + n], theta[N_FIJOS + n:]
+            ata, dfn = theta[k:k + n], theta[k + n:]
             nll += self.reg * (ata @ ata + dfn @ dfn)
             r1, r2 = w * (l1 - x), w * (l2 - y)          # d nll / d eta
             g = np.zeros_like(theta)
@@ -79,29 +105,34 @@ class DixonColes:
             g[1] = (r1 * local_real).sum()
             g[2] = (r1 * xl + r2 * xv).sum()
             g[3] = -(r1 * xv + r2 * xl).sum()
+            gmc, ghc = np.zeros(nc + 1), np.zeros(nc + 1)
+            np.add.at(gmc, ic, r1 + r2)
+            np.add.at(ghc, ic, r1 * local_real)
+            g[N_FIJOS:N_FIJOS + nc] = gmc[:nc]
+            g[N_FIJOS + nc:k] = ghc[:nc]
             ga = np.zeros(n)
             gd = np.zeros(n)
             np.add.at(ga, il, r1)
             np.add.at(ga, iv, r2)
             np.add.at(gd, iv, -r1)
             np.add.at(gd, il, -r2)
-            g[N_FIJOS:N_FIJOS + n] = ga + 2 * self.reg * ata
-            g[N_FIJOS + n:] = gd + 2 * self.reg * dfn
+            g[k:k + n] = ga + 2 * self.reg * ata
+            g[k + n:] = gd + 2 * self.reg * dfn
             return nll, g
 
-        inicio = np.zeros(N_FIJOS + 2 * n)
+        inicio = np.zeros(k + 2 * n)
         if self.params is not None:                     # arranque en caliente
-            k = (len(self.params) - N_FIJOS) // 2
-            inicio[:N_FIJOS] = self.params[:N_FIJOS]
-            inicio[N_FIJOS:N_FIJOS + k] = self.params[N_FIJOS:N_FIJOS + k]
-            inicio[N_FIJOS + n:N_FIJOS + n + k] = self.params[N_FIJOS + k:]
+            m = (len(self.params) - k) // 2              # equipos del ajuste anterior
+            inicio[:k] = self.params[:k]
+            inicio[k:k + m] = self.params[k:k + m]
+            inicio[k + n:k + n + m] = self.params[k + m:]
         else:
             inicio[0] = np.log(max((x.mean() + y.mean()) / 2, 0.1))
         res = minimize(objetivo, inicio, jac=True, method="L-BFGS-B")
         self.params = res.x
 
         # Segunda etapa: ρ con λ, γ fijos (solo afecta 0-0, 1-0, 0-1, 1-1)
-        l1, l2 = self._tasas(self.params, il, iv, local_real, xl, xv)
+        l1, l2 = self._tasas(self.params, il, iv, local_real, xl, xv, ic)
         bajos = (x <= 1) & (y <= 1)
         xb, yb, l1b, l2b, wb = x[bajos], y[bajos], l1[bajos], l2[bajos], w[bajos]
         tope = min(1 / l1b.max() / l2b.max(), 1.0) * 0.99 if len(l1b) else 0.2
@@ -116,21 +147,24 @@ class DixonColes:
         return self
 
     # ------------------------------------------------------------------
-    def tasas(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0):
-        n = len(self.equipos)
+    def tasas(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0, comp=COMP_BASE):
+        n, nc, k = len(self.equipos), len(self.comps), self._k
         mu, h, ba, bd = self.params[:N_FIJOS]
+        if comp != COMP_BASE:
+            i = self.comps.index(comp)
+            mu, h = mu + self.params[N_FIJOS + i], h + self.params[N_FIJOS + nc + i]
         if not self.usa_coef:
             x_local = x_visita = 0.0
-        ata, dfn = self.params[N_FIJOS:N_FIJOS + n], self.params[N_FIJOS + n:]
+        ata, dfn = self.params[k:k + n], self.params[k + n:]
         a = lambda e, xe: ba * xe + (ata[self.equipos[e]] if e in self.equipos else 0.0)
         d = lambda e, xe: bd * xe + (dfn[self.equipos[e]] if e in self.equipos else 0.0)
         l1 = np.exp(mu + a(local, x_local) - d(visita, x_visita) + (0.0 if es_neutral else h))
         l2 = np.exp(mu + a(visita, x_visita) - d(local, x_local))
         return l1, l2
 
-    def matriz(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0):
+    def matriz(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0, comp=COMP_BASE):
         """P(goles local = i, goles visita = j), i, j = 0..MAX_GOLES, con corrección τ."""
-        l1, l2 = self.tasas(local, visita, es_neutral, x_local, x_visita)
+        l1, l2 = self.tasas(local, visita, es_neutral, x_local, x_visita, comp)
         k = np.arange(MAX_GOLES + 1)
         fact = np.cumprod(np.r_[1, np.arange(1, MAX_GOLES + 1)])
         p1 = np.exp(-l1) * l1 ** k / fact
@@ -143,8 +177,8 @@ class DixonColes:
         m[1, 1] *= 1 - r
         return m / m.sum(), l1, l2
 
-    def predecir(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0):
-        m, l1, l2 = self.matriz(local, visita, es_neutral, x_local, x_visita)
+    def predecir(self, local, visita, es_neutral, x_local=0.0, x_visita=0.0, comp=COMP_BASE):
+        m, l1, l2 = self.matriz(local, visita, es_neutral, x_local, x_visita, comp)
         i, j = np.indices(m.shape)
         return {
             "prob_local": float(m[i > j].sum()),
@@ -158,6 +192,16 @@ class DixonColes:
     @property
     def ventaja_local(self):
         return float(np.exp(self.params[1]))
+
+    def niveles(self):
+        """{competición: (goles esperados base por equipo, ventaja de local ×)}."""
+        nc = len(self.comps)
+        mu, h = self.params[0], self.params[1]
+        salida = {COMP_BASE: (float(np.exp(mu)), float(np.exp(h)))}
+        for i, c in enumerate(self.comps):
+            salida[c] = (float(np.exp(mu + self.params[N_FIJOS + i])),
+                         float(np.exp(h + self.params[N_FIJOS + nc + i])))
+        return salida
 
     @property
     def betas(self):
