@@ -12,6 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23152445'/%3E%3Ctext x='16' y='23' font-family='Segoe UI,sans-serif' font-size='20' font-weight='800' fill='%23f4f6ff' text-anchor='middle'%3EU%3C/text%3E%3C/svg%3E">
 <script>
   // Apply the saved theme before first paint (no flash)
+  document.documentElement.dataset.view = location.hash.startsWith("#ligas") ? "ligas" : "ucl";
   try { const t = localStorage.getItem("ucl-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
 <style>
@@ -106,6 +107,68 @@
   .proof-strip > div:last-child { border: 0; }
   .proof-strip b { display: block; font-size: 23px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   .proof-strip span { font-size: 13px; color: var(--muted); }
+
+  /* View switch: Champions League / domestic leagues */
+  .views { display: flex; gap: 4px; flex: none; padding-right: 10px; margin-right: 4px; border-right: 1px solid var(--line); }
+  nav.sections .views a { color: var(--text); }
+  nav.sections .views a[aria-current="page"] { background: var(--hero); color: var(--hero-ink); }
+  .secs { display: flex; gap: 6px; flex: none; }
+  :root[data-view="ligas"] .ucl-only { display: none !important; }
+  :root:not([data-view="ligas"]) #ligas { display: none; }
+
+  /* Domestic leagues */
+  .flag { display: inline-block; width: 24px; height: 16px; border-radius: 3px; overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--line); }
+  .flag svg { display: block; width: 100%; height: 100%; }
+  .flag.lg { width: 42px; height: 28px; border-radius: 5px; }
+  .league-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin-bottom: 14px; scrollbar-width: thin; }
+  .league-tab { flex: none; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 16px 6px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; text-align: left; }
+  .league-tab b { display: block; font-size: 14px; line-height: 1.2; }
+  .league-tab small { display: block; font-size: 12px; color: var(--muted); }
+  .league-tab:hover { border-color: var(--muted); }
+  .league-tab[aria-selected="true"] { background: var(--text); border-color: var(--text); color: var(--panel); }
+  .league-tab[aria-selected="true"] small { color: var(--panel); opacity: .8; }
+  .league-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px 20px; margin-bottom: 18px; }
+  .league-head h3 { font-size: 22px; margin: 0; }
+  .league-head p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+  .league-stats { display: flex; gap: 24px; align-items: center; }
+  .league-stats .stat b { display: block; font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .league-stats .stat small { font-size: 12px; color: var(--muted); }
+  .lev-mini { width: 220px; }
+  .lev-mini .vals { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .lev-mini .lbar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; gap: 2px; }
+  .lev-mini .lbar span:nth-child(1) { background: var(--local); }
+  .lev-mini .lbar span:nth-child(2) { background: var(--draw); }
+  .lev-mini .lbar span:nth-child(3) { background: var(--away); }
+  .league-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .league-side { display: grid; gap: 18px; }
+  .ucl-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 10px; font-weight: 750; letter-spacing: .04em; background: var(--soft); color: var(--link); vertical-align: 1px; }
+  .form { display: inline-flex; gap: 3px; }
+  .form i { width: 18px; height: 18px; border-radius: 5px; display: inline-grid; place-items: center; font-size: 10px; font-style: normal; font-weight: 750; color: #fff; }
+  .form i.w { background: var(--ok); } .form i.d { background: var(--draw); } .form i.l { background: var(--bad); }
+  .form-inline { display: none; margin-top: 4px; }
+  .fix-day { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+  .fix-day:first-of-type { margin-top: 4px; }
+  .fix { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px minmax(0, 1fr); align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .fix:last-child { border-bottom: 0; }
+  .fix .t { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fix .h, .fix .a { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+  .fix .h { justify-content: flex-end; text-align: right; }
+  .fix .h span, .fix .a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fix .s { text-align: center; font-weight: 750; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .fix .s small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); }
+  .fix .s.vs { font-size: 12px; font-weight: 650; color: var(--muted); }
+  .fix .win { font-weight: 750; }
+  .league-link { margin-top: 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .league-link .ico { flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--soft); color: var(--link); display: grid; place-items: center; font-weight: 800; }
+  .league-link p { margin: 0; font-size: 14px; }
+  @media (max-width: 920px) { .league-layout { grid-template-columns: 1fr; } .league-head { grid-template-columns: auto minmax(0, 1fr); } .league-stats { grid-column: 1 / -1; flex-wrap: wrap; } }
+  @media (max-width: 640px) {
+    .hide-sm { display: none; }
+    .form-inline { display: flex; }
+    .lev-mini { width: 100%; }
+    .league-stats { gap: 16px; }
+    .fix { grid-template-columns: 42px minmax(0, 1fr) 52px minmax(0, 1fr); gap: 6px; font-size: 13px; }
+  }
 
   /* Sticky section nav */
   nav.sections { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -380,7 +443,7 @@
   </div>
 </header>
 
-<div class="wrap">
+<div class="wrap ucl-only">
   <div class="hero">
     <div>
       <div class="eyebrow">Champions League · ciencia de datos</div>
@@ -402,17 +465,23 @@
 
 <nav class="sections" aria-label="Secciones">
   <div class="wrap">
-    <a href="#proxima">01 · Jornada</a>
-    <a href="#tabla">02 · Tabla</a>
-    <a href="#precision">03 · Evaluación</a>
-    <a href="#historico">04 · Histórico</a>
+    <div class="views" role="group" aria-label="Competición">
+      <a href="#proxima" data-view="ucl">Champions League</a>
+      <a href="#ligas" data-view="ligas">Ligas nacionales</a>
+    </div>
+    <div class="secs ucl-only">
+      <a href="#proxima">01 · Jornada</a>
+      <a href="#tabla">02 · Tabla</a>
+      <a href="#precision">03 · Evaluación</a>
+      <a href="#historico">04 · Histórico</a>
+    </div>
   </div>
 </nav>
 
 <main class="wrap">
 
   <!-- 01 · Próxima jornada -->
-  <section id="proxima" aria-labelledby="h-proxima">
+  <section id="proxima" class="ucl-only" aria-labelledby="h-proxima">
     <div class="heading">
       <div>
         <div class="eyebrow">01 / Pronósticos</div>
@@ -442,7 +511,7 @@
   </section>
 
   <!-- 02 · Tabla -->
-  <section id="tabla" aria-labelledby="h-tabla">
+  <section id="tabla" class="ucl-only" aria-labelledby="h-tabla">
     <div class="heading">
       <div>
         <div class="eyebrow">02 / Competición</div>
@@ -460,7 +529,7 @@
   </section>
 
   <!-- 03 · Evaluación -->
-  <section id="precision" aria-labelledby="h-precision">
+  <section id="precision" class="ucl-only" aria-labelledby="h-precision">
     <div class="heading">
       <div>
         <div class="eyebrow">03 / Evaluación</div>
@@ -472,7 +541,7 @@
   </section>
 
   <!-- 04 · Histórico -->
-  <section id="historico" aria-labelledby="h-historico">
+  <section id="historico" class="ucl-only" aria-labelledby="h-historico">
     <div class="heading">
       <div>
         <div class="eyebrow">04 / Archivo</div>
@@ -481,6 +550,20 @@
       </div>
     </div>
     <div id="history" aria-busy="true"><div class="panel"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
+  </section>
+
+  <!-- Ligas nacionales -->
+  <section id="ligas" aria-labelledby="h-ligas">
+    <div class="heading">
+      <div>
+        <div class="eyebrow" id="ligas-eyebrow">Ligas nacionales</div>
+        <h2 id="h-ligas">Las 5 grandes ligas de Europa</h2>
+        <p class="sub">Tabla, próximos partidos y últimos resultados de cada liga. Aquí no hay pronósticos: estos partidos se usan para entrenar a Dixon-Coles v3 y al Elo propio.</p>
+      </div>
+      <a href="#proxima">Ir a la Champions League →</a>
+    </div>
+    <div class="league-tabs" id="league-tabs" role="tablist" aria-label="Elegir liga"></div>
+    <div id="league" role="tabpanel" aria-busy="true"><div class="panel"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
   </section>
 
   <!-- Metodología -->
@@ -520,7 +603,7 @@
   <div class="wrap">
     <div class="footer-line"><strong>UCL / DATA PLATFORM</strong><span>Python · PostgreSQL · Supabase · GitHub Actions</span></div>
     <p>Proyecto educativo de modelado estadístico. Los pronósticos se publican antes de cada partido para evaluar el modelo; no son recomendaciones de apuestas.</p>
-    <p><strong>Datos: openfootball, ESPN, UEFA.</strong> Escudos y nombres son marcas de sus respectivos clubes.</p>
+    <p><strong>Datos: openfootball, ESPN, UEFA, football-data.co.uk.</strong> Escudos y nombres son marcas de sus respectivos clubes.</p>
     <p id="updated"></p>
   </div>
 </footer>
@@ -654,7 +737,7 @@ themeSel.addEventListener("change", () => {
 });
 
 // ---------- scroll spy ----------
-const navLinks = [...document.querySelectorAll("nav.sections a")];
+const navLinks = [...document.querySelectorAll("nav.sections .secs a")];
 const spy = new IntersectionObserver((entries) => {
   for (const en of entries) {
     if (!en.isIntersecting) continue;
@@ -671,6 +754,7 @@ let pron = [], currentJ = null;
 
 async function loadPronosticos() {
   pron = await q("vw_dash_pronosticos", (x) => x.order("inicio_utc", { nullsFirst: false }).order("id_partido"));
+  pronLoaded();
   await teamsReady;
   if (!pron.length) {
     $("matches").innerHTML = `<div class="empty"><strong>Todavía no hay pronósticos publicados</strong>Aparecerán aquí antes de la próxima jornada.</div>`;
@@ -1244,10 +1328,197 @@ async function loadHistory() {
     <p class="note">Todas las rondas, resultado a los 90 minutos. Las barras usan la misma escala (100 %) en todas las temporadas.</p>`;
 }
 
+// ---------- Ligas nacionales ----------
+const FLAGS = {
+  ENG: '<rect width="30" height="20" fill="#fff"/><rect x="12.5" width="5" height="20" fill="#ce1124"/><rect y="7.5" width="30" height="5" fill="#ce1124"/>',
+  ESP: '<rect width="30" height="20" fill="#aa151b"/><rect y="5" width="30" height="10" fill="#f1bf00"/>',
+  GER: '<rect width="30" height="7" fill="#000"/><rect y="6.67" width="30" height="6.67" fill="#dd0000"/><rect y="13.33" width="30" height="6.67" fill="#ffce00"/>',
+  ITA: '<rect width="10" height="20" fill="#009246"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ce2b37"/>',
+  FRA: '<rect width="10" height="20" fill="#0055a4"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ef4135"/>',
+};
+const COUNTRY = { ENG: "Inglaterra", ESP: "España", GER: "Alemania", ITA: "Italia", FRA: "Francia" };
+const flag = (iso, cls = "") => `<span class="flag ${cls}" aria-hidden="true"><svg viewBox="0 0 30 20" preserveAspectRatio="none">${FLAGS[iso] ?? ""}</svg></span>`;
+const fmtHM = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" });
+const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+let ligas = [], ligaSel = null, ligasLoaded = false;
+const ligaCache = new Map();
+let pronLoaded; const pronReady = new Promise((r) => { pronLoaded = r; });
+
+function applyView() {
+  const h = location.hash;
+  const view = h.startsWith("#ligas") ? "ligas" : "ucl";
+  const changed = document.documentElement.dataset.view !== view;
+  document.documentElement.dataset.view = view;
+  document.querySelectorAll(".views a").forEach((a) => { if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  if (view === "ligas") {
+    const want = h.split("/")[1];
+    if (!ligasLoaded) { ligasLoaded = true; run("league", () => loadLigas(want)); }
+    else if (want && want !== ligaSel && ligas.some((l) => l.id_liga === want)) selectLiga(want, false);
+    if (changed) $("ligas").scrollIntoView({ block: "start" });
+  } else if (changed && h.length > 1) {
+    requestAnimationFrame(() => document.getElementById(h.slice(1))?.scrollIntoView({ block: "start" }));
+  }
+}
+window.addEventListener("hashchange", applyView);
+
+async function loadLigas(want) {
+  ligas = await q("vw_dash_ligas", (x) => x.order("orden"));
+  if (!ligas.length) { $("league").innerHTML = `<div class="empty"><strong>Todavía no hay datos de ligas</strong>Aparecerán aquí después de la próxima carga diaria.</div>`; return; }
+  const tabs = $("league-tabs");
+  tabs.innerHTML = ligas.map((l) => `
+    <button class="league-tab" type="button" role="tab" id="tab-${esc(l.id_liga)}" aria-controls="league" data-liga="${esc(l.id_liga)}" aria-selected="false" tabindex="-1">
+      ${flag(l.pais)}<span><b>${esc(l.liga)}</b><small>${esc(COUNTRY[l.pais] ?? l.pais)}</small></span>
+    </button>`).join("");
+  tabs.onclick = (e) => { const b = e.target.closest("[data-liga]"); if (b) selectLiga(b.dataset.liga); };
+  tabs.onkeydown = (e) => {
+    if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+    const ids = ligas.map((l) => l.id_liga);
+    let i = ids.indexOf(ligaSel);
+    i = e.key === "Home" ? 0 : e.key === "End" ? ids.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + ids.length) % ids.length;
+    e.preventDefault(); selectLiga(ids[i]); $("tab-" + ids[i]).focus();
+  };
+  let saved = null; try { saved = localStorage.getItem("ucl-liga"); } catch (e) {}
+  const first = [want, saved].find((id) => id && ligas.some((l) => l.id_liga === id)) ?? ligas[0].id_liga;
+  await selectLiga(first, false);
+}
+
+async function selectLiga(id, updateHash = true) {
+  ligaSel = id;
+  document.querySelectorAll(".league-tab").forEach((b) => { const on = b.dataset.liga === id; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+  $("league").setAttribute("aria-labelledby", "tab-" + id);
+  try { localStorage.setItem("ucl-liga", id); } catch (e) {}
+  if (updateHash) history.replaceState(null, "", "#ligas/" + id);
+  await run("league", () => renderLiga(id));
+}
+
+function standings(played) {
+  const t = new Map();
+  const row = (n) => t.get(n) ?? t.set(n, { equipo: n, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, pts: 0, form: [] }).get(n);
+  for (const m of played) {
+    const h = row(m.local), a = row(m.visita);
+    h.pj++; a.pj++; h.gf += m.goles_local; h.gc += m.goles_visita; a.gf += m.goles_visita; a.gc += m.goles_local;
+    if (m.goles_local > m.goles_visita) { h.g++; a.p++; h.pts += 3; h.form.push("w"); a.form.push("l"); }
+    else if (m.goles_local < m.goles_visita) { a.g++; h.p++; a.pts += 3; h.form.push("l"); a.form.push("w"); }
+    else { h.e++; a.e++; h.pts++; a.pts++; h.form.push("d"); a.form.push("d"); }
+  }
+  return [...t.values()].map((r) => ({ ...r, dg: r.gf - r.gc, form: r.form.slice(-5) }))
+    .sort((x, y) => y.pts - x.pts || y.dg - x.dg || y.gf - x.gf || x.equipo.localeCompare(y.equipo));
+}
+
+const FORM_L = { w: ["G", "ganó"], d: ["E", "empató"], l: ["P", "perdió"] };
+const formHtml = (f) => `<span class="form" aria-label="Últimos 5 partidos, del más antiguo al más reciente: ${f.map((x) => FORM_L[x][1]).join(", ")}">${f.map((x) => `<i class="${x}" aria-hidden="true">${FORM_L[x][0]}</i>`).join("")}</span>`;
+
+const initials = (n) => { const w = String(n).replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter((x) => x.length > 2 && !/^(FC|AFC|CF|SC|AC|AS|SS|US|SV|VfB|VfL|TSG|RC|OGC|Real|Club)$/i.test(x));
+  return (w.length > 1 ? w.slice(0, 3).map((x) => x[0]).join("") : (w[0] ?? n).slice(0, 3)).toUpperCase(); };
+const teamL = (name) => { const t = team(name); return t.codigo ? t : { ...t, codigo: initials(t.corto) }; };
+
+function fixRow(m) {
+  const H = teamL(m.local), A = teamL(m.visita);
+  const d = m.inicio_utc ? new Date(m.inicio_utc) : null;
+  const played = m.estado === "JUGADO";
+  const pending = !played && (d ? d.getTime() < Date.now() : m.fecha < ymdLocal(new Date()));
+  const hw = played && m.goles_local > m.goles_visita, aw = played && m.goles_visita > m.goles_local;
+  const xg = played && m.xg_local != null ? `<small>xG ${num(m.xg_local, 1)}–${num(m.xg_visita, 1)}</small>` : "";
+  const label = played
+    ? `${H.corto} ${m.goles_local}, ${A.corto} ${m.goles_visita}`
+    : `${H.corto} vs ${A.corto}${pending ? ", resultado pendiente" : d ? ", " + fmtHM.format(d) : ""}`;
+  return `<div class="fix" role="listitem" aria-label="${esc(label)}">
+    <span class="t">${d ? esc(fmtHM.format(d)) : "—"}</span>
+    <span class="h${hw ? " win" : ""}"><span>${esc(H.corto)}</span>${crest(H, "sm")}</span>
+    <span class="s${played ? "" : " vs"}" aria-hidden="true">${played ? `${m.goles_local}–${m.goles_visita}${xg}` : pending ? `<small>Resultado pendiente</small>` : "vs"}</span>
+    <span class="a${aw ? " win" : ""}">${crest(A, "sm")}<span>${esc(A.corto)}</span></span>
+  </div>`;
+}
+
+function byDay(list) {
+  const groups = new Map();
+  for (const m of list) {
+    const key = m.inicio_utc ? ymdLocal(new Date(m.inicio_utc)) : m.fecha;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(m);
+  }
+  return [...groups].map(([k, ms]) => `<div class="fix-day">${esc(fmtDay.format(localDate(k)))}</div><div role="list">${ms.map(fixRow).join("")}</div>`).join("");
+}
+
+async function renderLiga(id) {
+  const L = ligas.find((l) => l.id_liga === id);
+  $("ligas-eyebrow").textContent = `Ligas nacionales · ${L.etiqueta_temporada}`;
+  if (!ligaCache.has(id)) {
+    ligaCache.set(id, await q("vw_dash_ligas_partidos", (x) => x.eq("id_liga", id).eq("temporada", L.temporada).order("fecha").order("inicio_utc", { nullsFirst: true })));
+  }
+  const rows = ligaCache.get(id);
+  await Promise.all([teamsReady, Promise.race([pronReady, new Promise((r) => setTimeout(r, 4000))])]);
+  if (ligaSel !== id) return;
+  const ucl = new Set(pron.flatMap((r) => [r.local, r.visita]));
+  const played = rows.filter((m) => m.estado === "JUGADO");
+  const upcoming = rows.filter((m) => m.estado !== "JUGADO").sort((a, b) => String(a.inicio_utc ?? a.fecha).localeCompare(String(b.inicio_utc ?? b.fecha)));
+  const recent = played.slice().sort((a, b) => String(b.inicio_utc ?? b.fecha).localeCompare(String(a.inicio_utc ?? a.fecha))).slice(0, 10).reverse();
+  const table = standings(played);
+  const n = table.length, total = n * (n - 1);
+  const anyUcl = table.some((r) => ucl.has(r.equipo));
+
+  const head = `
+    <div class="panel league-head">
+      ${flag(L.pais, "lg")}
+      <div>
+        <h3>${esc(L.liga)}</h3>
+        <p>${esc(COUNTRY[L.pais] ?? L.pais)} · ${esc(L.etiqueta_temporada)} · ${int(played.length)} de ${int(total)} partidos jugados</p>
+      </div>
+      <div class="league-stats">
+        <div class="stat"><b>${num(L.goles_por_partido, 2)}</b><small>goles por partido</small></div>
+        <div class="lev-mini" role="img" aria-label="Resultados: local ${pct(L.pct_local)}, empate ${pct(L.pct_empate)}, visita ${pct(L.pct_visita)}">
+          <div class="vals"><span>L ${pct(L.pct_local)}</span><span>E ${pct(L.pct_empate)}</span><span>V ${pct(L.pct_visita)}</span></div>
+          <div class="lbar"><span style="flex:${Number(L.pct_local)}"></span><span style="flex:${Number(L.pct_empate)}"></span><span style="flex:${Number(L.pct_visita)}"></span></div>
+        </div>
+      </div>
+    </div>`;
+
+  const tbl = `
+    <div class="panel">
+      <div class="heading" style="margin-bottom:6px"><h3>Tabla de posiciones</h3></div>
+      <div class="table-wrap"><table>
+        <caption class="sr-only">Tabla de posiciones · ${esc(L.liga)} ${esc(L.etiqueta_temporada)}</caption>
+        <thead><tr><th class="l" scope="col">Pos</th><th class="l" scope="col">Equipo</th><th scope="col">PJ</th><th scope="col" class="hide-sm">G</th><th scope="col" class="hide-sm">E</th><th scope="col" class="hide-sm">P</th><th scope="col">DG</th><th scope="col">Pts</th><th scope="col" class="l hide-sm">Últimos 5</th></tr></thead>
+        <tbody>${table.map((r, i) => {
+          const tm = teamL(r.equipo);
+          return `<tr>
+            <td class="l pos">${i + 1}</td>
+            <td class="l club"><span class="club-cell" title="${esc(r.equipo)}">${crest(tm, "sm")}<span>${esc(tm.corto)}${ucl.has(r.equipo) ? `<span class="ucl-tag" title="Juega la Champions League esta temporada">UCL</span>` : ""}<span class="form-inline">${formHtml(r.form)}</span></span></span></td>
+            <td>${r.pj}</td><td class="hide-sm">${r.g}</td><td class="hide-sm">${r.e}</td><td class="hide-sm">${r.p}</td>
+            <td>${r.dg > 0 ? "+" : ""}${r.dg}</td>
+            <td class="pts">${r.pts}</td>
+            <td class="l hide-sm">${formHtml(r.form)}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>
+      <p class="note">Orden por puntos, diferencia de goles y goles a favor. Con igualdad de puntos, el desempate oficial de cada liga (por ejemplo, enfrentamiento directo en LaLiga y Serie A) puede cambiar el orden.${anyUcl ? " UCL = juega la Champions League esta temporada." : ""}</p>
+    </div>`;
+
+  const side = `
+    <div class="league-side">
+      <div class="panel">
+        <h3>Próximos partidos</h3>
+        <p class="small muted" style="margin:0">Horarios en tu zona horaria.</p>
+        ${upcoming.length ? byDay(upcoming) + (upcoming.some((m) => (m.inicio_utc ? new Date(m.inicio_utc).getTime() : localDate(m.fecha).getTime()) < Date.now()) ? `<p class="note">Los partidos ya iniciados aparecen como «resultado pendiente» hasta la próxima carga (football-data actualiza dos veces por semana).</p>` : "") : `<div class="empty" style="margin-top:12px"><strong>Sin partidos programados</strong>El calendario se actualiza dos veces por semana.</div>`}
+      </div>
+      <div class="panel">
+        <h3>Últimos resultados</h3>
+        ${recent.length ? byDay(recent) : `<div class="empty"><strong>Todavía no hay partidos jugados</strong></div>`}
+      </div>
+    </div>`;
+
+  $("league").innerHTML = `${head}<div class="league-layout">${tbl}${side}</div>
+    <div class="panel league-link"><span class="ico" aria-hidden="true">i</span>
+      <p>La forma de cada club en su liga también cuenta para sus pronósticos de Champions: Dixon-Coles v3 y el Elo propio se entrenan con estos partidos. <a href="#proxima">Ver los pronósticos de la Champions →</a></p></div>
+    <p class="note">Fuente: football-data.co.uk. Resultados a los 90 minutos; xG cuando la fuente lo publica. Solo datos de partidos: nunca cuotas.</p>`;
+}
+
 run("matches", loadPronosticos);
 run("standings", loadTabla);
 run("eval", loadEval);
 run("history", loadHistory);
+applyView();
 
 let rt;
 window.addEventListener("resize", () => {
