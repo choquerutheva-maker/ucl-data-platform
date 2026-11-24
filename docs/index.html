@@ -244,6 +244,13 @@
   .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); } .verdict.na { color: var(--muted); font-weight: 500; }
   .disagree { margin: 16px 0 0; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
   .disagree b { color: var(--text); }
+  /* Niké: AI analyst, visually set apart from the statistical models */
+  .model.nike { padding: 12px 12px 10px; border-radius: 10px; background: var(--soft); border-left: 3px solid var(--link); }
+  .model.nike .model-head strong { color: var(--link); }
+  .nike-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .nike-tag { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 11px; font-weight: 650; color: var(--muted); }
+  .notice.nike-notice { border-left: 3px solid var(--link); }
+  .nike-notice .fixed { display: block; margin-top: 4px; font-weight: 650; }
   .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--line); }
   .card-foot details { flex: 1 1 220px; }
   .card-foot details[open] { flex-basis: 100%; }
@@ -263,6 +270,7 @@
   .shape.ring { border-radius: 50%; background: transparent; border: 2px solid var(--muted); }
   .shape.square { border-radius: 1px; background: var(--muted); }
   .shape.ref { border-radius: 50%; background: var(--muted); }
+  .shape.star { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); width: 13px; height: 13px; background: var(--link); }
 
   /* States */
   .skel { background: linear-gradient(90deg, var(--soft) 0%, var(--line) 50%, var(--soft) 100%); background-size: 200% 100%; animation: sk 1.4s ease-in-out infinite; border-radius: 10px; }
@@ -491,12 +499,13 @@
       <a href="#precision">¿Qué tan bien pronostica? →</a>
     </div>
     <p class="notice" role="note">Proyecto educativo de modelado estadístico. Los pronósticos se publican antes de cada partido para evaluar el modelo; no son recomendaciones de apuestas. <a href="#precision">Ver cómo se evalúan →</a></p>
+    <p class="notice nike-notice" id="nike-notice" role="note" hidden><b>Niké · analista IA</b> publica su propia lectura de cada partido desde la jornada 4. Se muestra aparte de los modelos estadísticos y se evalúa con las mismas métricas.<span class="fixed">Probabilidades estimadas por Niké, no garantías de resultado.</span></p>
     <div class="chips" id="jornada-chips" role="group" aria-label="Elegir jornada"></div>
     <div class="filterbar">
       <label><span class="sr-only">Buscar equipo</span><input id="team-search" type="search" placeholder="Buscar un equipo…" autocomplete="off"></label>
       <small id="match-count" aria-live="polite"></small>
     </div>
-    <ul class="legend" aria-label="Leyenda">
+    <ul class="legend" id="pron-legend" aria-label="Leyenda">
       <li><span class="sw l"></span>Local</li>
       <li><span class="sw e"></span>Empate</li>
       <li><span class="sw v"></span>Visita</li>
@@ -651,6 +660,12 @@ const MODELS = {
   "Dixon-Coles v1": { shape: "ring", live: false, note: "solo backtest" },
   "Elo UCL v1": { shape: "diamond-o", live: false, note: "solo backtest" },
 };
+// Niké: AI analyst (not a statistical model). Shown apart, with its own label and notice.
+const NIKE = "Niké";
+const NIKE_LABEL = "Niké · analista IA";
+MODELS[NIKE] = { shape: "star", live: true };
+const NIKE_CONF = { ALTA: "Confianza alta", MEDIA: "Confianza media", BAJA: "Confianza baja" };
+const NIKE_ONCE = { PROBABLE: "Once probable", OFICIAL: "Once oficial" };
 const MODEL_ORDER = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo propio v1", "Dixon-Coles v1", "Elo UCL v1"];
 const LIVE_MODELS = ["Dixon-Coles v2", "Dixon-Coles v3", "Elo propio v1"];
 
@@ -749,13 +764,27 @@ const spy = new IntersectionObserver((entries) => {
 }, { rootMargin: "-40% 0px -55% 0px" });
 ["proxima", "tabla", "precision", "historico"].forEach((id) => spy.observe($(id)));
 
+// ---------- Niké (optional source: if the view fails, Niké is simply hidden) ----------
+let nike = new Map(); // id_partido -> latest Niké forecast before kick-off
+const nikeReady = q("vw_dash_nike").then((rows) => {
+  nike = new Map((rows ?? []).map((r) => [r.id_partido, r]));
+}).catch((e) => { nike = new Map(); console.warn("Niké no disponible:", e.message); });
+
+function showNike() {
+  if (!nike.size) return;
+  $("nike-notice").hidden = false;
+  const lg = $("pron-legend");
+  if (lg && !lg.querySelector(".shape.star")) lg.insertAdjacentHTML("beforeend", `<li><span class="shape star"></span>${NIKE_LABEL}</li>`);
+}
+
 // ---------- 01 · Próxima jornada ----------
 let pron = [], currentJ = null;
 
 async function loadPronosticos() {
   pron = await q("vw_dash_pronosticos", (x) => x.order("inicio_utc", { nullsFirst: false }).order("id_partido"));
   pronLoaded();
-  await teamsReady;
+  await Promise.all([teamsReady, nikeReady]);
+  showNike();
   if (!pron.length) {
     $("matches").innerHTML = `<div class="empty"><strong>Todavía no hay pronósticos publicados</strong>Aparecerán aquí antes de la próxima jornada.</div>`;
     $("proxima-sub").textContent = "";
@@ -845,9 +874,11 @@ function teamRow(m, side, isPlayed) {
     </div>`;
 }
 
-function modelBlock(m, k, r, isPlayed) {
+function modelBlock(m, k, r, isPlayed, opt = {}) {
   const segs = [["Local", r.prob_local, "l"], ["Empate", r.prob_empate, "e"], ["Visita", r.prob_visita, "v"]];
-  const gen = r.generado_en ? new Date(r.generado_en) : null;
+  const label = opt.label ?? k;
+  const genAt = r.generado_en ?? r.pronosticado_en;
+  const gen = genAt ? new Date(genAt) : null;
   const late = gen && m.inicio_utc && gen >= new Date(m.inicio_utc);
   let verdict = "";
   if (isPlayed) {
@@ -857,17 +888,25 @@ function modelBlock(m, k, r, isPlayed) {
     else verdict = `<div class="verdict na">Evaluación pendiente</div>`;
   }
   return `
-    <div class="model">
+    <div class="model${opt.cls ? " " + opt.cls : ""}">
       <div class="model-head">
-        <strong>${shape(k)}${esc(k)}</strong>
-        <span class="gen">${gen ? `Generado el ${esc(fmtDateTime.format(gen))}` : "Fecha de generación no disponible"}</span>
+        <strong>${shape(k)}${esc(label)}</strong>
+        <span class="gen">${gen ? `${opt.genVerb ?? "Generado"} el ${esc(fmtDateTime.format(gen))}` : "Fecha de generación no disponible"}</span>
       </div>
       <div class="values">${segs.map(([lab, p]) => `<span>${lab} ${pct(p)}</span>`).join("")}</div>
-      <div class="bar" role="img" aria-label="${esc(k)}: local ${pct(r.prob_local, 1)}, empate ${pct(r.prob_empate, 1)}, visita ${pct(r.prob_visita, 1)}">
+      <div class="bar" role="img" aria-label="${esc(label)}: local ${pct(r.prob_local, 1)}, empate ${pct(r.prob_empate, 1)}, visita ${pct(r.prob_visita, 1)}">
         ${segs.map(([, p, c]) => `<span class="${c}" style="flex:${Number(p)}"></span>`).join("")}
       </div>
-      ${verdict}
+      ${verdict}${opt.extra ?? ""}
     </div>`;
+}
+
+function nikeBlock(m, r, isPlayed) {
+  const tags = [NIKE_CONF[r.confianza], NIKE_ONCE[r.tipo_once]].filter(Boolean);
+  return modelBlock(m, NIKE, r, isPlayed, {
+    label: NIKE_LABEL, cls: "nike", genVerb: "Pronosticado",
+    extra: tags.length ? `<div class="nike-tags">${tags.map((t) => `<span class="nike-tag">${esc(t)}</span>`).join("")}</div>` : "",
+  });
 }
 
 function disagreement(models) {
@@ -879,12 +918,12 @@ function disagreement(models) {
   return `<p class="disagree"><b>Los modelos difieren:</b> ${Math.round(gap * 100)} puntos porcentuales en la probabilidad de ${lab[k]}.</p>`;
 }
 
-function details(m, models) {
+function details(m, models, nk) {
   const dc = models["Dixon-Coles v2"], dc3 = models["Dixon-Coles v3"], elo = models["Elo propio v1"];
   const sL = m.nombre_corto_local || m.local, sV = m.nombre_corto_visita || m.visita;
   const xg = (r) => r && r.goles_esp_local != null
     ? `${esc(sL)} ${num(r.goles_esp_local, 2)} · ${esc(sV)} ${num(r.goles_esp_visita, 2)}` : NA;
-  const rounded = Object.values(models).some((r) =>
+  const rounded = [...Object.values(models), ...(nk ? [nk] : [])].some((r) =>
     [r.prob_local, r.prob_empate, r.prob_visita].reduce((s, p) => s + Math.round(p * 100), 0) !== 100);
   const cut = [...new Set(Object.values(models).map((r) => r.datos_hasta).filter(Boolean))];
   return `
@@ -895,6 +934,7 @@ function details(m, models) {
           ${dc ? `<dt>Dixon-Coles v2</dt><dd>Goles esperados: ${xg(dc)}<br>Probabilidad de 3 o más goles: ${pct(dc.prob_over_2_5)}</dd>` : ""}
           ${dc3 ? `<dt>Dixon-Coles v3</dt><dd>Goles esperados: ${xg(dc3)}<br>Probabilidad de 3 o más goles: ${pct(dc3.prob_over_2_5)}</dd>` : ""}
           ${elo ? `<dt>Elo propio v1</dt><dd>Goles esperados: ${xg(elo)}<br>Probabilidad de 3 o más goles: ${pct(elo.prob_over_2_5)}<br><small>Elo solo estima local, empate y visita.</small></dd>` : ""}
+          ${nk ? `<dt>${NIKE_LABEL}</dt><dd>Goles esperados: ${xg(nk)}<br>Probabilidad de 3 o más goles: ${pct(nk.prob_over_2_5)}<br>Probabilidad de que ambos equipos marquen: ${pct(nk.prob_btts)}${nk.n_pronosticos > 1 ? `<br><small>Última de ${nk.n_pronosticos} versiones publicadas antes del inicio.</small>` : ""}</dd>` : ""}
           <dt>Datos hasta</dt><dd>${cut.length ? cut.map((c) => esc(fmtDate.format(localDate(c)))).join(" / ") : NA}</dd>
           <dt>Nombres</dt><dd>${esc(m.local)} – ${esc(m.visita)}</dd>
         </dl>
@@ -905,6 +945,7 @@ function details(m, models) {
 
 function matchCard(m, models) {
   const isPlayed = m.estado === "JUGADO";
+  const nk = nike.get(m.id_partido);
   const d = m.inicio_utc ? new Date(m.inicio_utc) : null;
   const when = d ? fmtTime.format(d) : "Horario por confirmar";
   const status = isPlayed ? "Final · 90 minutos" : "Programado";
@@ -913,9 +954,10 @@ function matchCard(m, models) {
       <div class="match-top"><span>${esc(when)}</span><span>${status}</span></div>
       <div class="teams">${teamRow(m, "local", isPlayed)}${teamRow(m, "visita", isPlayed)}</div>
       ${LIVE_MODELS.filter((k) => models[k]).map((k) => modelBlock(m, k, models[k], isPlayed)).join("")}
+      ${nk ? nikeBlock(m, nk, isPlayed) : ""}
       ${disagreement(models)}
       <div class="card-foot">
-        ${details(m, models)}
+        ${details(m, models, nk)}
         <button class="btn-hist" type="button" data-a="${esc(m.local)}" data-b="${esc(m.visita)}">Historial</button>
       </div>
     </article>`;
@@ -1167,6 +1209,12 @@ async function loadEval() {
       <div id="live"></div>
     </div>
 
+    <div class="sub-block" id="nike-live-block" hidden>
+      <h3>${NIKE_LABEL} frente a los modelos, en los mismos partidos</h3>
+      <p class="notice nike-notice" role="note">Niké empezó a publicar en la jornada 4: la comparación usa solo los partidos en los que Niké y los tres modelos en vivo tenían un pronóstico previo al inicio.<span class="fixed">Probabilidades estimadas por Niké, no garantías de resultado.</span></p>
+      <div id="nike-live"></div>
+    </div>
+
     <div class="sub-block">
       <h3>En vivo contra el mercado, por jornada</h3>
       <div id="market"></div>
@@ -1174,6 +1222,32 @@ async function loadEval() {
   renderSeasonChart();
   renderLive(perf.filter((r) => r.tipo === "EN_VIVO"));
   renderMarket(market);
+  renderNikeLive().catch((e) => console.warn("Niké: evaluación no disponible", e));
+}
+
+// Niké vs live models on exactly the same played matches (forecast made before kick-off)
+async function renderNikeLive() {
+  await Promise.all([pronReady, nikeReady]);
+  const block = $("nike-live-block"), box = $("nike-live");
+  if (!block || !nike.size) return;
+  const valid = (r) => r && r.estado === "JUGADO" && r.acierto != null && r.log_loss != null &&
+    !(r.generado_en && r.inicio_utc && new Date(r.generado_en) >= new Date(r.inicio_utc));
+  const byMatch = new Map(groupMatches(pron).map((g) => [g.m.id_partido, g.models]));
+  const ids = [...nike.values()].filter(valid).map((r) => r.id_partido)
+    .filter((id) => LIVE_MODELS.every((k) => valid(byMatch.get(id)?.[k])));
+  block.hidden = false;
+  if (!ids.length) {
+    box.innerHTML = `<div class="empty"><strong>Comparación aún no disponible</strong>Aparecerá cuando se jueguen partidos con pronóstico de Niké y de los modelos.</div>`;
+    return;
+  }
+  const avg = (rs, k) => rs.reduce((s, r) => s + Number(r[k]), 0) / rs.length;
+  const series = [[NIKE, NIKE_LABEL, ids.map((id) => nike.get(id))],
+    ...LIVE_MODELS.map((k) => [k, k, ids.map((id) => byMatch.get(id)[k])])];
+  const js = [...new Set(ids.map((id) => nike.get(id).jornada))].sort((a, b) => a - b);
+  const jTxt = js.length > 1 ? `jornadas ${js[0]}–${js.at(-1)}` : `jornada ${js[0]}`;
+  box.innerHTML = `<div class="panel">${series.map(([k, label, rs]) => `
+    <div class="metric"><div class="who">${shape(k)}<span>${esc(label)}<small>${rs.length} partidos · acierto ${pct(avg(rs.map((r) => ({ a: r.acierto ? 1 : 0 })), "a"), 1)}</small></span></div><div></div><b>${num(avg(rs, "log_loss"), 3)}</b></div>`).join("")}
+    <p class="note">Log loss promedio en los mismos ${ids.length} partidos (${jTxt}); menor es mejor. Muestra pequeña: interpretar con cautela.</p></div>`;
 }
 
 function svgShape(shp, cx, cy, r = 6) {
